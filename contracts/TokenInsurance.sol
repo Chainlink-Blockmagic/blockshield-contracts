@@ -18,24 +18,25 @@ contract TokenInsurance is ERC20, ERC20Burnable, AccessControl, ReentrancyGuard,
 
     /// @notice Is the token related to the warranty
     address public securedAsset;
+    
+    /// @notice Prime represent the value of the inssurance. It is a percentage applied to the value of the RWA
+    uint256 public prime;
 
     /// @notice Due date and yield represent the value 
-    uint public dueDate;
-    uint public yield;
-
-    /// @notice Prime represent the value 
-    uint public prime;
+    uint256 public dueDate;
+    uint256 public yield;
 
     /// @notice Used to run the chainlink automation only once
     bool public alreadyExecuted;
 
     /// @notice It will mint the total supply of the RWA secured asset to the contract itself
-    constructor(string memory name_, string memory symbol_, uint dueDate_, uint yield_, address securedAsset_, uint prime_, address vault_) ERC20(name_, symbol_) {
+    constructor(string memory name_, string memory symbol_, uint256 dueDate_, uint256 yield_, address securedAsset_, uint256 prime_, address vault_) ERC20(name_, symbol_) {
         require(vault_ != address(0), "Vault address cannot be zero address");
         require(securedAsset_ != address(0), "Secured asset cannot be zero address");
         require(dueDate_ > block.timestamp, "Token due date must be in the future.");
-        require(yield_ > 0, "Token yield must be greater than zero");
-        require(prime_ > 0, "Token prime must be greater than zero");
+        require(checkPercentageThreshold(yield_), "Token yield must be greater than zero");
+        require(checkPercentageThreshold(prime_), "Token prime must be greater than zero");
+        require(prime_ < yield_, "Token prime must be greater than zero");
 
         vault = vault_;
         securedAsset = securedAsset_;
@@ -63,7 +64,7 @@ contract TokenInsurance is ERC20, ERC20Burnable, AccessControl, ReentrancyGuard,
         _mint(msg.sender, quantity_);
 
         // Cadastar registro no vault
-        IVault(vault).addInsurance(securedAsset, msg.sender, quantity_, requiredAmount_);
+        IVault(vault).addHiredInsurance(securedAsset, msg.sender, quantity_, requiredAmount_);
         // Pay insurance to vault
         payable(vault).transfer(msg.value);
 
@@ -81,7 +82,9 @@ contract TokenInsurance is ERC20, ERC20Burnable, AccessControl, ReentrancyGuard,
 
     function performUpkeep(bytes calldata /* performData */) external override {
         if (!alreadyExecuted && isDueDateArrived()) {
+
             // TODO: calls function API asking if RWA was paid
+
             bool liquidationResponse = false;
             IVault(vault).handleRWAPayment(liquidationResponse, securedAsset);
             alreadyExecuted = true;
@@ -92,4 +95,9 @@ contract TokenInsurance is ERC20, ERC20Burnable, AccessControl, ReentrancyGuard,
         return block.timestamp >= dueDate;
     }
 
+    function checkPercentageThreshold(uint256 percentage) internal pure returns (bool) {
+        uint256 MIN_PERCENTAGE = 1 * 10 ** 16;
+        uint256 MAX_PERCENTAGE = 1 ether;
+        return percentage >= MIN_PERCENTAGE && percentage <= MAX_PERCENTAGE;
+    }
 }
