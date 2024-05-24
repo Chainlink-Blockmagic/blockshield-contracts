@@ -12,6 +12,11 @@ contract TokenRWA is ERC20, ERC20Burnable, AccessControl {
     uint public yield;
     AggregatorV3Interface internal priceFeed;
 
+     ///////////////////
+    // Errors
+    ///////////////////
+    error TokenRWA__NeedsMoreThanZero();   
+
     constructor(string memory name_, string memory symbol_, uint256 totalSupply_, uint dueDate_, uint yield_) ERC20(name_, symbol_) {
         require(dueDate_ > block.timestamp, "Token due date must be in the future");
         require(yield_ > 0, "Token yield must be greater than zero");
@@ -30,6 +35,16 @@ contract TokenRWA is ERC20, ERC20Burnable, AccessControl {
 
     }
 
+     ///////////////////
+    // Modifiers
+    ///////////////////
+    modifier moreThanZero(uint256 amount) {
+        if (amount == 0) {
+            revert TokenRWA__NeedsMoreThanZero();
+        }
+        _;
+    }
+
      /**
     * Returns the latest price
     */
@@ -44,15 +59,17 @@ contract TokenRWA is ERC20, ERC20Burnable, AccessControl {
         return price;
     }
 
-     function usdAmount(uint256 amountETH) public view returns (uint256) {
+     function usdAmount(uint256 amountETH) moreThanZero(amountETH) public view returns (uint256) {
         //Sent amountETH, how many usd I have
         uint256 ethUsd = uint256(getChainlinkDataFeedLatestAnswer());     //with 8 decimal places
-        uint256 amountUSD = amountETH * ethUsd / 10**18;                    //ETH = 18 decimal places
-      //  uint256 amountToken = amountUSD / tokenPrice / 10**(8/2);  //8 decimal places from ETHUSD / 2 decimal places from token
-      //  return amountToken;
+        uint256 amountUSD = amountETH * ethUsd / 10**18;                    //ETH = 18 decimal places      
        return amountUSD;
     }
 
-   
-
+     function ethAmount(uint256 amountUSD) moreThanZero(amountUSD) public view returns (uint256) {
+        //Sent amountUSD, how many eth I have
+        uint256 ethUsd = uint256(getChainlinkDataFeedLatestAnswer());       //with 8 decimal places
+        uint256 amountETH = (amountUSD * 10**18)/ ethUsd;                    //ETH = 18 decimal places     
+       return amountETH;
+    }
 }
