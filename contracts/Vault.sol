@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "./interfaces/ITokenInsurance.sol";
+import "./interfaces/ITokenRWA.sol";
 
 contract Vault is AccessControl, Ownable {
 
@@ -11,7 +13,7 @@ contract Vault is AccessControl, Ownable {
 
     /// @notice Maps for each secured RWA an owner with insurance details
     /// @dev This structure only allows to have one insurance per client per RWA
-    mapping(address => mapping(address => InsuranceDetails)) public insurances;
+    mapping(address => mapping(address => InsuranceDetails)) public hiredInsurances;
 
     /// @notice Holds the total amount saved by RWA
     mapping(address => uint256) public amountByAsset;
@@ -27,11 +29,14 @@ contract Vault is AccessControl, Ownable {
         uint256 quantity; // amount of tokens secured
     }
 
+    event InsurancePaid (address indexed securedAsset_, address indexed insuranceClient_, uint256 quantity_, uint256 securedAmount_, uint256 insuranceCost);
+    event RWAYieldPaid (address indexed securedAsset_, address indexed insuranceClient_, uint256 quantity_, uint256 securedAmount_, uint256 insuranceCost);
+
     constructor() Ownable(msg.sender) {
         _grantRole(ADMIN_ROLE, msg.sender);
     }
 
-    function addInsurance(address securedAsset_, address insuranceClient_, uint256 quantity_, uint256 securedAmount_) external payable onlyRole(ADMIN_ROLE) returns (bool) {
+    function addHiredInsurance(address securedAsset_, address insuranceClient_, uint256 quantity_, uint256 securedAmount_) external payable onlyRole(ADMIN_ROLE) returns (bool) {
         // CHECK
         require(securedAsset_ != address(0), "securedAsset_ cannot be zero address");
         require(insuranceClient_ != address(0), "insuranceClient_ cannot be zero address");
@@ -42,7 +47,7 @@ contract Vault is AccessControl, Ownable {
             insuranceOwnersByAsset[securedAsset_].push(insuranceClient_);
         }
         insuranceClientCheck[insuranceClient_] = true;
-        InsuranceDetails memory insuranceDetails = insurances[securedAsset_][insuranceClient_];
+        InsuranceDetails memory insuranceDetails = hiredInsurances[securedAsset_][insuranceClient_];
         insuranceDetails.quantity += quantity_;
         insuranceDetails.securedAmount += securedAmount_;
         amountByAsset[securedAsset_] += securedAmount_;
@@ -50,34 +55,50 @@ contract Vault is AccessControl, Ownable {
         return true;
     }
 
-    function payInsurance(address securedAsset_) internal returns (bool) {
-        address[] memory insuranceOwners = insuranceOwnersByAsset[securedAsset_];
-        for (uint i = 0; i < insuranceOwners.length; i++) {
-            InsuranceDetails memory insuranceDetails = insurances[securedAsset_][insuranceOwners[i]];
-            
-        }
-        return true;
+    function handleRWAPayment(bool liquidationResponse, address insurance) external {
+        if (!liquidationResponse) payInsurance(insurance);
+        else payRWAWithYield(insurance);
     }
 
-    function payRWAWithYield(address securedAsset_) internal returns (bool) {
-        address[] memory insuranceOwners = insuranceOwnersByAsset[securedAsset_];
-        for (uint i = 0; i < insuranceOwners.length; i++) {
-            InsuranceDetails memory insuranceDetails = insurances[securedAsset_][insuranceOwners[i]];
-            
-        }
-        return true;
+    function payInsurance(address insurance) internal {
+        payUser(insurance, false);
     }
 
+    function payRWAWithYield(address insurance) internal {
+        payUser(insurance, true);
+    }
 
-    function handleRWAPayment(bool liquidationResponse, address securedAsset_) external returns (bool) {
-        if (!liquidationResponse) {
-            payInsurance(securedAsset_);
-        } else { // This means that the RWA was paid successfully. No Insurance to activate
-            // Aqui tiro do balance
-            // Valor pago pelo seguro + yield
-            payRWAWithYield(securedAsset_);
+    function payUser(address insurance, bool isInsuracePaid) internal {
+        require(insurance != address(0), "insurance cannot be zero address");
+
+        ITokenInsurance insuranceContract = ITokenInsurance(insurance);
+        address securedAsset = insuranceContract.securedAsset();
+        address[] memory insuranceOwners = insuranceOwnersByAsset[securedAsset];
+
+        for (uint i = 0; i < insuranceOwners.length; i++) {
+            address currentInsuranceOwner = insuranceOwners[i];
+
+            InsuranceDetails memory insuranceDetails = hiredInsurances[securedAsset][currentInsuranceOwner];
+            uint256 insuranceCost = getInsuranceCost(insuranceContract, insuranceDetails.quantity);
+
+            uint256 amountToTransfer;
+            if (isInsuracePaid) amountToTransfer = insuranceDetails.securedAmount - insuranceCost;
+            else amountToTransfer = (insuranceDetails.securedAmount * ITokenRWA(securedAsset).calculateRWAYield()) - insuranceCost;
+
+            payable(currentInsuranceOwner).transfer(amountToTransfer);
+
+            if (isInsuracePaid) emit InsurancePaid(securedAsset, currentInsuranceOwner, insuranceDetails.quantity, insuranceDetails.securedAmount, insuranceCost);
+            else emit RWAYieldPaid(securedAsset, currentInsuranceOwner, insuranceDetails.quantity, insuranceDetails.securedAmount, insuranceCost);
         }
-        return true;
+    }
+
+    function getInsuranceCost(ITokenInsurance insuranceContract, uint256 quantity) internal returns (uint256 insuranceCost) {
+        uint256 prime = insuranceContract.prime();
+        address securedAsset = insuranceContract.securedAsset();
+        uint256 rwaValue = ITokenRWA(securedAsset).value();
+        uint256 rwaDecimals = ITokenRWA(securedAsset).decimals();
+        uint256 insuranceValue = rwaValue * prime / 10 ** rwaDecimals;
+        insuranceCost = quantity * insuranceValue / 10 ** rwaDecimals;
     }
 
     function withdraw() external onlyRole(ADMIN_ROLE) {
