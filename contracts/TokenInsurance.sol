@@ -9,9 +9,11 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./interfaces/ITokenRWA.sol";
 import "./interfaces/IVault.sol";
+import "./libraries/PercentageUtils.sol";
 
 contract TokenInsurance is ERC20, ERC20Burnable, AccessControl, ReentrancyGuard, AutomationCompatibleInterface {
     using SafeERC20 for IERC20;
+    using PercentageUtils for uint256;
 
     /// @notice Vault is the contract who holds the RWAs tokens and waits liquidation
     address private vault;
@@ -30,13 +32,13 @@ contract TokenInsurance is ERC20, ERC20Burnable, AccessControl, ReentrancyGuard,
     bool public alreadyExecuted;
 
     /// @notice It will mint the total supply of the RWA secured asset to the contract itself
-    constructor(string memory name_, string memory symbol_, uint256 dueDate_, uint256 yield_, address securedAsset_, uint256 prime_, address vault_) ERC20(name_, symbol_) {
-        require(vault_ != address(0), "Vault address cannot be zero address");
-        require(securedAsset_ != address(0), "Secured asset cannot be zero address");
-        require(dueDate_ > block.timestamp, "Token due date must be in the future.");
-        require(checkPercentageThreshold(yield_), "Token yield must be greater than zero");
-        require(checkPercentageThreshold(prime_), "Token prime must be greater than zero");
-        require(prime_ < yield_, "Token prime must be greater than zero");
+    constructor(string calldata name_, string calldata symbol_, uint256 dueDate_, uint256 yield_, address securedAsset_, uint256 prime_, address vault_) ERC20(name_, symbol_) {
+        require(vault_ != address(0), "Vault address cannot be zero");
+        require(securedAsset_ != address(0), "Secured asset cannot be zero");
+        require(dueDate_ > block.timestamp, "Token due date must be in future");
+        require(yield_.checkPercentageThreshold(), "Invalid yield percentage");
+        require(prime_.checkPercentageThreshold(), "Invalid prime percentage");
+        require(prime_ < yield_, "Prime must be less than yield");
 
         vault = vault_;
         securedAsset = securedAsset_;
@@ -48,13 +50,13 @@ contract TokenInsurance is ERC20, ERC20Burnable, AccessControl, ReentrancyGuard,
     }
 
     function hireInsurance(uint256 quantity_) external payable nonReentrant returns (bool) {
-        require(quantity_ > 0, "Invalid amount of tokens to secure");
+        require(quantity_ > 0, "Cannot secure zero tokens");
         require(quantity_ <= IERC20(securedAsset).totalSupply(), "Invalid amount of tokens to secure");
-        require(totalSupply() + quantity_ <= IERC20(securedAsset).totalSupply(), "Insurance supply plus current insurance hiring must be less or equals than secured asset supply");
+        require(totalSupply() + quantity_ <= IERC20(securedAsset).totalSupply(), "Cannot secure desired amount of tokens");
 
         //TODO: Mantemos o valor
         uint256 requiredAmount_ = ITokenRWA(securedAsset).value() / ITokenRWA(securedAsset).decimals() * quantity_;
-        require(msg.value >= requiredAmount_, "Insufficient ETH to conclude insurance purchase for the desired amount of tokens");
+        require(msg.value >= requiredAmount_, "Insufficient ETH balance");
         // TODO: check for possible maximum amount per user
 
         // Transferir pra uma multisig wallet (ou seja alguma wallet que possamos controlar) a quantidade de Precatorio105 que o cliente compro
@@ -65,6 +67,7 @@ contract TokenInsurance is ERC20, ERC20Burnable, AccessControl, ReentrancyGuard,
 
         // Cadastar registro no vault
         IVault(vault).addHiredInsurance(securedAsset, msg.sender, quantity_, requiredAmount_);
+
         // Pay insurance to vault
         payable(vault).transfer(msg.value);
 
@@ -76,13 +79,13 @@ contract TokenInsurance is ERC20, ERC20Burnable, AccessControl, ReentrancyGuard,
         return true;
     }
 
-    function checkUpkeep(bytes calldata /* checkData */) external view override returns (bool upkeepNeeded, bytes memory /* performData */) {
+    function checkUpkeep(bytes calldata /* checkData */) external view override returns (bool upkeepNeeded, bytes memory performData) {
         upkeepNeeded = !alreadyExecuted && isDueDateArrived();
+        performData = new bytes(0);
     }
 
     function performUpkeep(bytes calldata /* performData */) external override {
         if (!alreadyExecuted && isDueDateArrived()) {
-
             // TODO: calls function API asking if RWA was paid
 
             bool liquidationResponse = false;
@@ -95,9 +98,4 @@ contract TokenInsurance is ERC20, ERC20Burnable, AccessControl, ReentrancyGuard,
         return block.timestamp >= dueDate;
     }
 
-    function checkPercentageThreshold(uint256 percentage) internal pure returns (bool) {
-        uint256 MIN_PERCENTAGE = 1 * 10 ** 16;
-        uint256 MAX_PERCENTAGE = 1 ether;
-        return percentage >= MIN_PERCENTAGE && percentage <= MAX_PERCENTAGE;
-    }
 }

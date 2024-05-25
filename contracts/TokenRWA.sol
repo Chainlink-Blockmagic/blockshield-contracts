@@ -12,7 +12,7 @@ contract TokenRWA is ERC20, ERC20Burnable, AccessControl {
     uint256 public totalValue;
     uint256 public value;
 
-    constructor(string memory name_, string memory symbol_, uint256 totalSupply_, uint256 totalValue_, uint256 dueDate_, uint256 yield_) ERC20(name_, symbol_) {
+    constructor(string calldata name_, string calldata symbol_, uint256 totalSupply_, uint256 totalValue_, uint256 dueDate_, uint256 yield_) ERC20(name_, symbol_) {
         require(totalValue_ > 0, "Token total value must be greater than zero");
         require(dueDate_ > block.timestamp, "Token due date must be in the future");
         require(yield_ > 0, "Token yield must be greater than zero");
@@ -20,7 +20,7 @@ contract TokenRWA is ERC20, ERC20Burnable, AccessControl {
         dueDate = dueDate_;
         yield = yield_;
         totalValue = totalValue_;
-        value = totalValue / totalSupply() * 10 ** decimals();
+        value = totalValue / totalSupply_ * 10 ** decimals();
 
         _mint(msg.sender, totalSupply_ * 10 ** decimals());
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
