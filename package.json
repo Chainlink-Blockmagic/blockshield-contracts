@@ -18,6 +18,7 @@
     "@openzeppelin/contracts-upgradeable": "^5.0.2",
     "@typechain/ethers-v6": "^0.5.0",
     "@typechain/hardhat": "^9.0.0",
+    "bignumber.js": "^9.1.2",
     "chai": "^4.2.0",
     "ethers": "^6.4.0",
     "hardhat": "^2.22.4",
