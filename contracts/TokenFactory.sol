@@ -30,7 +30,7 @@ contract TokenFactory is AccessControl, Ownable {
 
     function createSecuredRWA(string calldata name_, string calldata symbol_, uint256 totalSupply_, uint256 totalValue_, uint256 dueDate_, uint256 yield_, uint256 prime_, address vault_) public onlyRole(ADMIN_ROLE) returns (address, address) {
         TokenRWA rwa = new TokenRWA(name_, symbol_, totalSupply_, totalValue_, dueDate_, yield_);
-        TokenInsurance insurance = new TokenInsurance(string(abi.encodePacked("blockshield", name_)), symbol_, dueDate_, yield_, address(rwa), prime_, vault_);
+        TokenInsurance insurance = new TokenInsurance(string(abi.encodePacked("blockshield", name_)), symbol_, address(rwa), vault_, prime_);
         SecuredRwa memory item = SecuredRwa({ rwa: address(rwa), insurance: address(insurance) });
         tokens.push(item);
         rwaSecured[address(rwa)] = address(insurance);
@@ -40,7 +40,7 @@ contract TokenFactory is AccessControl, Ownable {
        return (address(rwa), address(insurance));
     }
 
-    function getAllTokens() external view onlyRole(ADMIN_ROLE) returns(SecuredRwa[] calldata) {
+    function getAllTokens() external view onlyRole(ADMIN_ROLE) returns(SecuredRwa[] memory) {
         return tokens;
     }
 }
