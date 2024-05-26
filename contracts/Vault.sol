@@ -83,7 +83,7 @@ contract Vault is AccessControl, Ownable {
 
             uint256 amountToTransfer;
             if (isInsuracePaid) amountToTransfer = insuranceDetails.securedAmount - insuranceCost;
-            else amountToTransfer = (insuranceDetails.securedAmount * ITokenRWA(securedAsset).calculateRWAYield()) - insuranceCost;
+            else amountToTransfer = (insuranceDetails.quantity * ITokenRWA(securedAsset).calculateRWAValuePlusYield()) - insuranceCost;
 
             payable(currentInsuranceOwner).transfer(amountToTransfer);
 
@@ -95,7 +95,7 @@ contract Vault is AccessControl, Ownable {
     function getInsuranceCost(ITokenInsurance insuranceContract, uint256 quantity) internal returns (uint256 insuranceCost) {
         uint256 prime = insuranceContract.prime();
         address securedAsset = insuranceContract.securedAsset();
-        uint256 rwaValue = ITokenRWA(securedAsset).value();
+        uint256 rwaValue = ITokenRWA(securedAsset).unitValue();
         uint256 rwaDecimals = ITokenRWA(securedAsset).decimals();
         uint256 insuranceValue = rwaValue * prime / 10 ** rwaDecimals;
         insuranceCost = quantity * insuranceValue / 10 ** rwaDecimals;
@@ -105,10 +105,21 @@ contract Vault is AccessControl, Ownable {
         payable(msg.sender).transfer(address(this).balance);
     }
 
-    /// @notice Set ADMIN role to an address
-    /// @param newAdmin a new admin address 
-    function grantAdminRole(address newAdmin) external onlyRole(ADMIN_ROLE) {
-        require(newAdmin != address(0), "Vault: newAdmin is the zero address");
-        _grantRole(ADMIN_ROLE, newAdmin);
+    /// @notice Grants the ADMIN_ROLE to an account.
+    /// @dev Throw if msg.sender has not ADMIN_ROLE role.
+    /// @dev Throw if account is address zero. Message: "TokenInsurance: account is the zero address"
+    /// @param account The address to grant the role
+    function grantAdminRole(address account) public onlyRole(ADMIN_ROLE) {
+        require(account != address(0), "Vault: account is the zero address");
+        _grantRole(ADMIN_ROLE, account);
+    }
+
+    /// @notice Revokes the ADMIN_ROLE from an account.
+    /// @dev Throw if msg.sender has not ADMIN_ROLE role.
+    /// @dev Throw if account is address zero. Message: "TokenInsurance: Cannot revoke own admin role"
+    /// @param account The address to grant the role
+    function revokeAdminRole(address account) public onlyRole(ADMIN_ROLE) {
+        require(account != msg.sender, "Vault: Cannot revoke own admin role"); // Prevent self-revocation
+        _revokeRole(ADMIN_ROLE, account);
     }
 }
