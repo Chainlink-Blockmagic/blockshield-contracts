@@ -2,5 +2,6 @@
 pragma solidity ^0.8.24;
 
 interface ITokenInsurance {
-    function dueDate() external returns (uint256);
+    function prime() external returns (uint256);
+    function securedAsset() external returns (address);
 }

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity 0.8.24;
 
 import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
 import {OwnerIsCreator} from "@chainlink/contracts-ccip/src/v0.8/shared/access/OwnerIsCreator.sol";
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
-import {IERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/token/ERC20/IERC20.sol";
-import {LinkTokenInterface} from "@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
+import {IERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
+import {LinkTokenInterface} from "@chainlink/contracts/src/v0.8/shared/interfaces/LinkTokenInterface.sol";
 
 
 
@@ -230,7 +230,7 @@ contract TokenTransferFujiToSepolia is OwnerIsCreator {
             tokenAmounts: tokenAmounts, // The amount and type of token being transferred
             extraArgs: Client._argsToBytes(
                 // Additional arguments, setting gas limit to 0 as we are not sending any data and non-strict sequencing mode
-                Client.EVMExtraArgsV1({gasLimit: 0, strict: false})
+                Client.EVMExtraArgsV1({gasLimit: 0})
             ),
             // Set the feeToken to a feeTokenAddress, indicating specific asset will be used for fees
             feeToken: _feeTokenAddress
