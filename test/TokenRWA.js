@@ -1,6 +1,6 @@
 const { loadFixture } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
-const { parseEther, parseUnits, formatUnits } = require("ethers");
+const { parseEther, parseUnits } = require("ethers");
 const { BigNumber } = require('bignumber.js');
 
 const contracts = {
@@ -22,6 +22,7 @@ describe("TokenRWA", function () {
     const [protocolAdmin] = await ethers.getSigners();
     const provider = ethers.provider;
     const tokenRWAContractAddress = await deployTokenRWA();
+
     return {
       protocolAdmin,
       provider,
@@ -87,61 +88,81 @@ describe("TokenRWA", function () {
       });
     });
     describe("ok scenarios", function () {
-      it("Should deploy token RWA with the right attributes and minting all the token supply to the signer", async function () {
-        const { tokenRWAContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
+      it("Should set name correctly", async function () {
+        const { tokenRWAContractAddress } = await loadFixture(deployProtocol);
         const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
-  
         const name = await tokenRWAContract.name();
         expect(name).to.equal("Precatorio 105");
-  
+      });
+      it("Should set symbol correctly", async function () {
+        const { tokenRWAContractAddress } = await loadFixture(deployProtocol);
+        const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
         const symbol = await tokenRWAContract.symbol();
         expect(symbol).to.equal("PRECATORIO105");
-  
+      });
+      it("Should set decimals correctly", async function () {
+        const { tokenRWAContractAddress } = await loadFixture(deployProtocol);
+        const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
         const decimals = await tokenRWAContract.decimals();
-        console.log(`decimals: ${decimals}`);
         expect(decimals).to.equal(18);
-  
-        // Set correct total supply
+      });
+      it("Should set total supply correctly", async function () {
+        const { tokenRWAContractAddress } = await loadFixture(deployProtocol);
+        const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
         const totalSupply = await tokenRWAContract.totalSupply(); // 10,000
-        console.log(`totalSupply: ${totalSupply}`);
         expect(totalSupply).to.equal(TEN_THOUSAND);
-  
-        // Mint tokens to Signer
-        const tokenRWABalance = await tokenRWAContract.balanceOf(protocolAdmin.address);
-        console.log(`tokenRWABalance: ${tokenRWABalance}`);
-        expect(tokenRWABalance).to.equal(TEN_THOUSAND);
-  
-        // Set correct total value
+      });
+      it("Should set total value correctly", async function () {
+        const { tokenRWAContractAddress } = await loadFixture(deployProtocol);
+        const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
         const tokenRWATotalValue = await tokenRWAContract.totalValue(); // 1,000,000
-        console.log(`tokenRWATotalValue: ${tokenRWATotalValue}`);
         expect(tokenRWATotalValue).to.equal(ONE_MILLION);
-  
-        // Set correct unit value
+      });
+      it("Should set unit value correctly", async function () {
+        const { tokenRWAContractAddress } = await loadFixture(deployProtocol);
+        const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
         const tokenRWAUnitValue = await tokenRWAContract.unitValue();
-        console.log(`tokenRWAUnitValue: ${tokenRWAUnitValue}`);
+        const totalSupply = await tokenRWAContract.totalSupply();
+        const tokenRWATotalValue = await tokenRWAContract.totalValue();
         expect(tokenRWAUnitValue).to.equal(BigNumber(tokenRWATotalValue).div(totalSupply).multipliedBy(parseEther("1")));
-  
+      });
+      it("Should set due date correctly", async function () {
+        const { tokenRWAContractAddress } = await loadFixture(deployProtocol);
+        const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
         const tokenRWADueDate = await tokenRWAContract.dueDate();
-        console.log(`tokenRWADueDate: ${tokenRWADueDate}`);
-        expect(tokenRWADueDate).to.equal(parseUnits(parseInt(NOW_IN_SECS + ONE_DAY_IN_SECS).toString(), 0));
-  
+        const TOMORROW = parseUnits(parseInt(NOW_IN_SECS + ONE_DAY_IN_SECS).toString(), 0);
+        expect(tokenRWADueDate).to.equal(TOMORROW);
+      });
+      it("Should set yield correctly", async function () {
+        const { tokenRWAContractAddress } = await loadFixture(deployProtocol);
+        const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
         const tokenRWAYield = await tokenRWAContract.yield();
-        console.log(`tokenRWAYield: ${tokenRWAYield}`);
         expect(tokenRWAYield).to.equal(parseEther("0.15"));
+      });
+      it("Should mint total supply of tokens to the contract itself", async function () {
+        const { tokenRWAContractAddress } = await loadFixture(deployProtocol);
+        const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
+        const tokenRWABalance = await tokenRWAContract.balanceOf(tokenRWAContractAddress);
+        expect(tokenRWABalance).to.equal(TEN_THOUSAND);
+      });
+      it("Should grant admin role to deployer", async function () {
+        const { tokenRWAContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
+        const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
+        const adminRole = await tokenRWAContract.ADMIN_ROLE();
+        const hasRole = await tokenRWAContract.hasRole(adminRole, protocolAdmin.address);
+        expect(hasRole).to.equal(true);
       });
       it("Should calculate the RWA Yield correctly", async function () {
         const { tokenRWAContractAddress } = await loadFixture(deployProtocol);
         const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
   
         const tokenRWAYield = await tokenRWAContract.yield();
-        console.log(`tokenRWAYield: ${tokenRWAYield}`);
-  
         const tokenRWAUnitValue = await tokenRWAContract.unitValue();
-        console.log(`tokenRWAUnitValue: ${tokenRWAUnitValue}`);
-  
+        const decimals = await tokenRWAContract.decimals();
+
         const yieldAmount = await tokenRWAContract.calculateRWAValuePlusYield();
-        console.log(`yieldAmount: ${yieldAmount}`);
-        expect(yieldAmount).to.equal(parseEther("115")); // Unit value plus yield
+        const expectedYieldAmount = BigNumber(tokenRWAUnitValue).multipliedBy(tokenRWAYield).div(BigNumber(10).pow(decimals));
+        expect(yieldAmount).to.equal(BigNumber(tokenRWAUnitValue).plus(expectedYieldAmount)); // Unit value plus yield
       });
       it("Should deploy token RWA with a correct yield", async () => {
         const TOMORROW = parseUnits(parseInt(NOW_IN_SECS + ONE_DAY_IN_SECS).toString(), 0);
@@ -154,6 +175,12 @@ describe("TokenRWA", function () {
         const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
         const tokenRWAContract = await TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, TOMORROW, parseEther("0.01"));
         expect(await tokenRWAContract.yield()).to.equal(parseEther("0.01"));
+      });
+      it("Should deploy when yield is equals MAX_PERCENTAGE (1)", async () => {
+        const TOMORROW = parseUnits(parseInt(NOW_IN_SECS + ONE_DAY_IN_SECS).toString(), 0);
+        const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
+        const tokenRWAContract = await TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, TOMORROW, parseEther("1"));
+        expect(await tokenRWAContract.yield()).to.equal(parseEther("1"));
       });
     });
   });
