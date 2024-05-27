@@ -1,7 +1,6 @@
 const { loadFixture } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
-const { parseEther, parseUnits, formatUnits } = require("ethers");
-const { BigNumber } = require('bignumber.js');
+const { parseEther, parseUnits } = require("ethers");
 
 const contracts = {
   VAULT: "Vault",
@@ -21,13 +20,22 @@ describe("TokenInsurance", function () {
 
   async function deployProtocol() {
     const [protocolAdmin] = await ethers.getSigners();
-    const provider = ethers.provider;
     const tokenRWAContractAddress = await deployTokenRWA();
     const vaultContractAddress = await deployVault();
     const tokenInsuranceContractAddress = await deployTokenInsurance({ vaultAddress: vaultContractAddress, tokenRWAaddress: tokenRWAContractAddress });
+
+    expect(tokenInsuranceContractAddress).to.not.equal(ZERO_ADDRESS);
+    expect(vaultContractAddress).to.not.equal(ZERO_ADDRESS);
+    expect(tokenRWAContractAddress).to.not.equal(ZERO_ADDRESS);
+
+    const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
+    await vaultContract.grantAdminRole(tokenInsuranceContractAddress);
+
+    const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
+    await tokenRWAContract.grantAdminRole(tokenInsuranceContractAddress);
+
     return {
       protocolAdmin,
-      provider,
       tokenRWAContractAddress,
       vaultContractAddress,
       tokenInsuranceContractAddress
@@ -89,19 +97,35 @@ describe("TokenInsurance", function () {
       });
     });
     describe('success scenarios', async () => {
-      it("Should deploy Token Insurance contract", async () => {
-        const { tokenRWAContractAddress, vaultContractAddress, tokenInsuranceContractAddress } = await loadFixture(deployProtocol);
-        expect(tokenInsuranceContractAddress).to.not.equal(ZERO_ADDRESS);
-        expect(vaultContractAddress).to.not.equal(ZERO_ADDRESS);
-        expect(tokenRWAContractAddress).to.not.equal(ZERO_ADDRESS);
+      it("Should assign vault correctly ", async () => {
+        const { vaultContractAddress, tokenInsuranceContractAddress } = await loadFixture(deployProtocol);
         const tokenInsuranceContract = await ethers.getContractAt(contracts.TOKEN_INSURANCE, tokenInsuranceContractAddress);
         expect(await tokenInsuranceContract.vault()).to.equal(vaultContractAddress);
+      });
+      it("Should assign TokenRWA address to secured asset correctly ", async () => {
+        const { tokenRWAContractAddress, tokenInsuranceContractAddress } = await loadFixture(deployProtocol);
+        const tokenInsuranceContract = await ethers.getContractAt(contracts.TOKEN_INSURANCE, tokenInsuranceContractAddress);
         expect(await tokenInsuranceContract.securedAsset()).to.equal(tokenRWAContractAddress);
+      });
+      it("Should assign prime correctly", async () => {
+        const { tokenInsuranceContractAddress } = await loadFixture(deployProtocol);
+        const tokenInsuranceContract = await ethers.getContractAt(contracts.TOKEN_INSURANCE, tokenInsuranceContractAddress);
+        expect(await tokenInsuranceContract.prime()).to.equal(parseEther("0.05"));
+      });
+      it("Should not mint any tokens of TokenInsurance", async () => {
+        const { tokenInsuranceContractAddress } = await loadFixture(deployProtocol);
+        const tokenInsuranceContract = await ethers.getContractAt(contracts.TOKEN_INSURANCE, tokenInsuranceContractAddress);
+        expect(await tokenInsuranceContract.totalSupply()).to.equal(0);
+      });
+      it("Should set automation parameter as false", async () => {
+        const { tokenInsuranceContractAddress } = await loadFixture(deployProtocol);
+        const tokenInsuranceContract = await ethers.getContractAt(contracts.TOKEN_INSURANCE, tokenInsuranceContractAddress);
+        expect(await tokenInsuranceContract.alreadyExecuted()).to.be.false;
       });
     });
   });
 
-  describe("Hire Insurance", function () {
+  describe("\n   Hire Insurance", function () {
     describe('error scenarios', async () => {
       it("Should revert if quantity_ is zero address", async () => {
         const { tokenInsuranceContractAddress } = await loadFixture(deployProtocol);
@@ -115,8 +139,67 @@ describe("TokenInsurance", function () {
         await expect(tokenInsuranceContract.hireInsurance(parseEther("10001")))
         .to.be.revertedWith("Cannot secure more than associated RWA supply");
       });
+      it("Should revert if quantity_ plus current TokenInsurance supply is greater than RWA total supply", async () => {
+        const { tokenInsuranceContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
+        const tokenInsuranceContract = await ethers.getContractAt(contracts.TOKEN_INSURANCE, tokenInsuranceContractAddress);
+        const ETHBalance = await ethers.provider.getBalance(protocolAdmin.address);
+
+        // To hire insurance for RWA Total Supply it will need a million of ETH
+        await tokenInsuranceContract.hireInsurance(parseEther("10000"), { value: parseEther("1000000") }); // Hire all RWA token insurances
+
+        // Hire an extra Insurance
+        await expect(tokenInsuranceContract.hireInsurance(parseEther("1")))
+        .to.be.revertedWith("Cannot secure desired amount of tokens");
+      });
+      it("Should revert if ETH amount is less than required amount to hire", async () => {
+        const { tokenInsuranceContractAddress } = await loadFixture(deployProtocol);
+        const tokenInsuranceContract = await ethers.getContractAt(contracts.TOKEN_INSURANCE, tokenInsuranceContractAddress);
+        await expect(tokenInsuranceContract.hireInsurance(parseEther("1")), { value: parseEther("99.99999") })
+        .to.be.revertedWith("Insufficient ETH to hire insurance");
+      });
     });
-    describe('success scenarios', async () => {});
+    describe('success scenarios', async () => {
+      it("Should hire insurance and mint requested insurance tokens to signer", async () => {
+        const { tokenInsuranceContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
+        const tokenInsuranceContract = await ethers.getContractAt(contracts.TOKEN_INSURANCE, tokenInsuranceContractAddress);
+        await expect(tokenInsuranceContract.hireInsurance(parseEther("1"), { value: parseEther("100") }))
+        .to.changeTokenBalances(
+          tokenInsuranceContract,
+          [protocolAdmin],
+          [parseEther("1").valueOf()]
+        );
+      });
+      it("Should hire insurance and transfer tokens from TokenRWA to Vault", async () => {
+        const { tokenInsuranceContractAddress, tokenRWAContractAddress, vaultContractAddress } = await loadFixture(deployProtocol);
+        const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
+        const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
+        const tokenInsuranceContract = await ethers.getContractAt(contracts.TOKEN_INSURANCE, tokenInsuranceContractAddress);
+        await expect(tokenInsuranceContract.hireInsurance(parseEther("1"), { value: parseEther("100") }))
+        .to.changeTokenBalances(
+          tokenRWAContract,
+          [tokenRWAContract, vaultContract],
+          [-parseEther("1").valueOf(), parseEther("1").valueOf()]
+        );
+      });
+      it("Should hire insurance and send ETH from signer to Vault", async () => {
+        const { tokenInsuranceContractAddress, vaultContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
+        const tokenInsuranceContract = await ethers.getContractAt(contracts.TOKEN_INSURANCE, tokenInsuranceContractAddress);
+        await expect(tokenInsuranceContract.hireInsurance(parseEther("1"), { value: parseEther("100") }))
+        .to.changeEtherBalances(
+          [protocolAdmin, vaultContractAddress],
+          [-parseEther("100").valueOf(), parseEther("100").valueOf()]
+        );
+      });
+      it("Should hire insurance and send exact ETH from signer to Vault", async () => {
+        const { tokenInsuranceContractAddress, vaultContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
+        const tokenInsuranceContract = await ethers.getContractAt(contracts.TOKEN_INSURANCE, tokenInsuranceContractAddress);
+        await expect(tokenInsuranceContract.hireInsurance(parseEther("1"), { value: parseEther("105") }))
+        .to.changeEtherBalances(
+          [protocolAdmin, vaultContractAddress, tokenInsuranceContract],
+          [-parseEther("100").valueOf(), parseEther("100").valueOf(), 0]
+        );
+      });
+    });
   });
   const deployTokenRWA = async () => {
     console.log(" --- Deploying Token RWA contract --- ");
@@ -146,7 +229,7 @@ describe("TokenInsurance", function () {
   };
 
   const deployTokenInsurance = async ({ vaultAddress, tokenRWAaddress }) => {
-    console.log(" --- Deploying Token RWA contract --- ");
+    console.log(" --- Deploying Token Insurance contract --- ");
     const TokenInsurance = await ethers.getContractFactory(contracts.TOKEN_INSURANCE);
     const insurance = {
       name: "Precatorio 105",

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/ITokenInsurance.sol";
 import "./interfaces/ITokenRWA.sol";
 
@@ -122,4 +122,10 @@ contract Vault is AccessControl, Ownable {
         require(account != msg.sender, "Vault: Cannot revoke own admin role"); // Prevent self-revocation
         _revokeRole(ADMIN_ROLE, account);
     }
+
+    // Function to receive Ether. msg.data must be empty
+    receive() external payable {}
+
+    // Fallback function is called when msg.data is not empty
+    fallback() external payable {}
 }

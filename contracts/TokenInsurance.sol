@@ -41,37 +41,43 @@ contract TokenInsurance is ERC20, ERC20Burnable, ReentrancyGuard, AutomationComp
         prime = prime_;
     }
 
-    function hireInsurance(uint256 quantity_) external payable nonReentrant returns (bool) {
+    function hireInsurance(uint256 quantity_) external payable nonReentrant {
         require(quantity_ > 0, "Cannot secure zero tokens");
         require(quantity_ <= IERC20(securedAsset).totalSupply(), "Cannot secure more than associated RWA supply");
         require(totalSupply() + quantity_ <= IERC20(securedAsset).totalSupply(), "Cannot secure desired amount of tokens");
 
-        //TODO: Mantemos o valor
-        uint256 requiredAmount_ = ITokenRWA(securedAsset).unitValue() / ITokenRWA(securedAsset).decimals() * quantity_;
-        require(msg.value >= requiredAmount_, "Insufficient ETH balance");
+        //FIXME: Trocar para requerir USDC em lugar de ETH
+        uint256 requiredAmount_ = ITokenRWA(securedAsset).unitValue() / 10 ** ITokenRWA(securedAsset).decimals() * quantity_;
+        require(msg.value >= requiredAmount_, "Insufficient ETH to hire insurance");
         // TODO: check for possible maximum amount per user
 
         // Transferir pra uma multisig wallet (ou seja alguma wallet que possamos controlar) a quantidade de Precatorio105 que o cliente compro
          // TODO: Refactor to send tokens through CCIP sendTokens
         // SendMessageCCIP(jasjsajasjas)
-        IERC20(securedAsset).safeTransferFrom(securedAsset, vault, quantity_);
-        
-        // Mintamos para msg.sender a quantidade de tokens desejados
+
+        // Mint TokenInsurance desired amount of tokens to msg.sender
         _mint(msg.sender, quantity_);
 
-        // Cadastar registro no vault
         // TODO: Refactor to send CCIP message
+        // Allow TokenInsurance to spend TokenRWA balance in its behalf
+        ITokenRWA(securedAsset).allowSpendTokens(address(this), quantity_);
+
+        // TODO: This call will be in vault logic
+        // Transfer TokenRWA amount of tokens to vault
+        IERC20(securedAsset).safeTransferFrom(securedAsset, vault, quantity_);
+
+        // Cadastar registro no vault
         IVault(vault).addHiredInsurance(securedAsset, msg.sender, quantity_, requiredAmount_);
 
+        // FIXME: This code will be replaced by a USDC token transfer to Vault through CCIP
         // Pay insurance to vault
-        payable(vault).transfer(msg.value);
+        payable(vault).transfer(requiredAmount_);
 
-        // Calculate excess amount
+        // // Calculate excess amount
         uint256 excessAmount = msg.value - requiredAmount_;
         if (excessAmount > 0) {
             payable(msg.sender).transfer(excessAmount);
         }
-        return true;
     }
 
     function checkUpkeep(bytes calldata /* checkData */) external view override returns (bool upkeepNeeded, bytes memory performData) {
