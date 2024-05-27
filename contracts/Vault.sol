@@ -22,7 +22,7 @@ contract Vault is AccessControl, Ownable {
     mapping(address => address[]) public insuranceOwnersByAsset;
 
     /// @notice Used to avoid insert a client twice
-    mapping(address => bool) public insuranceClientCheck;
+    mapping(address => bool) public existsInsuranceClient;
 
     struct InsuranceDetails {
         uint256 securedAmount; // value payed by the client
@@ -36,23 +36,22 @@ contract Vault is AccessControl, Ownable {
         _grantRole(ADMIN_ROLE, msg.sender);
     }
 
-    function addHiredInsurance(address securedAsset_, address insuranceClient_, uint256 quantity_, uint256 securedAmount_) external payable onlyRole(ADMIN_ROLE) returns (bool) {
+    function addHiredInsurance(address securedAsset_, address insuranceClient_, uint256 quantity_, uint256 securedAmount_) external payable onlyRole(ADMIN_ROLE) {
         // CHECK
         require(securedAsset_ != address(0), "securedAsset_ cannot be zero address");
         require(insuranceClient_ != address(0), "insuranceClient_ cannot be zero address");
-        require(quantity_ > 0, "_amount cannot be zero");
-        require(securedAmount_ > 0, "_amount cannot be zero");
-
-        if (!insuranceClientCheck[insuranceClient_]) {
+        require(quantity_ > 0, "quantity_ cannot be zero");
+        require(securedAmount_ > 0, "securedAmount_ cannot be zero");
+        if (!existsInsuranceClient[insuranceClient_]) {
             insuranceOwnersByAsset[securedAsset_].push(insuranceClient_);
+            hiredInsurances[securedAsset_][insuranceClient_] = InsuranceDetails({ quantity: quantity_, securedAmount: securedAmount_ });
+        } else {
+            InsuranceDetails storage insuranceDetails = hiredInsurances[securedAsset_][insuranceClient_];
+            insuranceDetails.quantity += quantity_;
+            insuranceDetails.securedAmount += securedAmount_;
         }
-        insuranceClientCheck[insuranceClient_] = true;
-        InsuranceDetails memory insuranceDetails = hiredInsurances[securedAsset_][insuranceClient_];
-        insuranceDetails.quantity += quantity_;
-        insuranceDetails.securedAmount += securedAmount_;
+        existsInsuranceClient[insuranceClient_] = true;
         amountByAsset[securedAsset_] += securedAmount_;
-
-        return true;
     }
 
     function handleRWAPayment(bool liquidationResponse, address insurance) external {
