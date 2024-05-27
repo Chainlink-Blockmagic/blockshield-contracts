@@ -49,12 +49,6 @@ contract TokenRWA is ERC20, ERC20Burnable, AccessControl {
         yield = yield_;
         totalValue = totalValue_;
         unitValue = totalValue / totalSupply_ * 10 ** decimals();
-
-        /**
-        * Network: Sepolia
-        * Aggregator: ETH/USD
-        * Address: 0x694AA1769357215DE4FAC081bf1f309aDC325306
-        */
         priceFeed = AggregatorV3Interface(aggregatorNetwork);
 
         _grantRole(ADMIN_ROLE, msg.sender);
