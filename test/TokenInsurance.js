@@ -127,7 +127,7 @@ describe("TokenInsurance", function () {
 
   describe("\n   Hire Insurance", function () {
     describe('error scenarios', async () => {
-      it("Should revert if quantity_ is zero address", async () => {
+      it("Should revert if quantity_ is zero value", async () => {
         const { tokenInsuranceContractAddress } = await loadFixture(deployProtocol);
         const tokenInsuranceContract = await ethers.getContractAt(contracts.TOKEN_INSURANCE, tokenInsuranceContractAddress);
         await expect(tokenInsuranceContract.hireInsurance(0))
