@@ -28,14 +28,14 @@ contract TokenFactory is AccessControl, Ownable {
         _grantRole(ADMIN_ROLE, msg.sender);
     }
 
-    function createSecuredRWA(string calldata name_, string calldata symbol_, uint256 totalSupply_, uint256 totalValue_, uint256 dueDate_, uint256 yield_, uint256 prime_, address vault_) public onlyRole(ADMIN_ROLE) returns (address, address) {
+    function createSecuredRWA(string memory name_, string memory symbol_, uint256 totalSupply_, uint256 totalValue_, uint256 dueDate_, uint256 yield_, uint256 prime_, address vault_, address router_, bytes32 donID_, uint32 gasLimit_) public onlyRole(ADMIN_ROLE) returns (address, address) {
         /**
         * Network: Sepolia
         * Aggregator: ETH/USD
         * Address: 0x694AA1769357215DE4FAC081bf1f309aDC325306
         */
         TokenRWA rwa = new TokenRWA(name_, symbol_, totalSupply_, totalValue_, dueDate_, yield_, 0x694AA1769357215DE4FAC081bf1f309aDC325306);
-        TokenInsurance insurance = new TokenInsurance(string(abi.encodePacked("blockshield", name_)), symbol_, address(rwa), vault_, prime_);
+        TokenInsurance insurance = new TokenInsurance(string(abi.encodePacked("blockshield", name_)), symbol_, address(rwa), vault_, prime_, router_, donID_, gasLimit_);
         SecuredRwa memory item = SecuredRwa({ rwa: address(rwa), insurance: address(insurance) });
         tokens.push(item);
         rwaSecured[address(rwa)] = address(insurance);
