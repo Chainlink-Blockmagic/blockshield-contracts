@@ -1,6 +1,6 @@
 const { loadFixture } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
-const { parseEther, parseUnits } = require("ethers");
+const { parseEther, parseUnits, keccak256, toUtf8Bytes } = require("ethers");
 
 const contracts = {
   VAULT: "Vault",
@@ -16,6 +16,9 @@ const ONE_MILLION = parseEther("1000000");
 const TEN_THOUSAND = parseEther("10000");
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const AGGREGATOR_NETWORK_SEPOLIA = "0x694AA1769357215DE4FAC081bf1f309aDC325306";
+const ROUTER_ID_AMOY = "0xC22a79eBA640940ABB6dF0f7982cc119578E11De";
+const DON_ID_AMOY = keccak256(toUtf8Bytes("0x66756e2d706f6c79676f6e2d6d61696e6e65742d310000000000000000000000"));
+const SUBSCRIPTION_ID = 1;
 
 describe("Vault", function () {
 
@@ -181,9 +184,12 @@ describe("Vault", function () {
       yield: parseEther("0.15"), // 15% yield
       prime: parseEther("0.05"), // 5% prime
       securedAsset: tokenRWAaddress,
-      vault: vaultAddress
+      vault: vaultAddress,
+      router: ROUTER_ID_AMOY, // Polygon Amoy Router
+      donId: DON_ID_AMOY, // Polygon Amoy Router
+      gasLimit: 300000
     }
-    const tokenInsuranceContract = await TokenInsurance.deploy(insurance.name, insurance.symbol, insurance.securedAsset, insurance.vault, insurance.prime);
+    const tokenInsuranceContract = await TokenInsurance.deploy(insurance.name, insurance.symbol, insurance.securedAsset, insurance.vault, insurance.prime, insurance.router, insurance.donId, insurance.gasLimit);
     const tokenInsuranceContractAddress = await tokenInsuranceContract.getAddress();
     console.log(`TokenInsurance address: ${tokenInsuranceContractAddress}`);
     return tokenInsuranceContractAddress;
