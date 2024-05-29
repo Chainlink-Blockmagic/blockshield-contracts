@@ -151,14 +151,14 @@ describe("Vault", function () {
   const deployTokenRWA = async () => {
     console.log(" --- Deploying Token RWA contract --- ");
     const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
-    const TOMORROW = parseUnits(parseInt(NOW_IN_SECS + ONE_YEAR_IN_SECS).toString(), 0);
+    const NEXT_YEAR = parseUnits(parseInt(NOW_IN_SECS + ONE_YEAR_IN_SECS).toString(), 0);
     const rwa = {
       name: "Precatorio 105",
       symbol: "PRECATORIO105",
       totalSupply: TEN_THOUSAND,
       totalValue: ONE_MILLION,
       yield: parseEther("0.15"), // 15% yield
-      dueDate: TOMORROW,
+      dueDate: NEXT_YEAR,
     }
     const tokenRWAContract = await TokenRWA.deploy(rwa.name, rwa.symbol, rwa.totalSupply, rwa.totalValue, rwa.dueDate, rwa.yield, AGGREGATOR_NETWORK_SEPOLIA);
     const tokenRWAContractAddress = await tokenRWAContract.getAddress();
