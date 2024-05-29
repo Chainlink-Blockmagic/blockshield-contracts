@@ -19,8 +19,8 @@ module.exports = {
       })),
     },
     amoy: {
-      url: AMOY_RPC_URL,
-      accounts: [PROTOCOL_ADMIN_ACCOUNT_PRIVATE_KEY],
+      url: AMOY_RPC_URL || '',
+      accounts: PROTOCOL_ADMIN_ACCOUNT_PRIVATE_KEY ? [PROTOCOL_ADMIN_ACCOUNT_PRIVATE_KEY] : [],
       gasPrice: 100000000000,
       gasLimit: 30000000,
     },
