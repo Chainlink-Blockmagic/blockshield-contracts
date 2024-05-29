@@ -196,7 +196,7 @@ contract TokenInsurance is
         return block.timestamp >= ITokenRWA(securedAsset).dueDate();
     }
 
-    function setSubscriptionId(uint64 subscriptionId_) external {
+    function setSubscriptionId(uint64 subscriptionId_) external onlyRole(ADMIN_ROLE) {
         require(subscriptionId_ > 0, "Cannot secure zero tokens");
         subscriptionId = subscriptionId_;
     }
