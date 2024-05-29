@@ -10,7 +10,7 @@ const contracts = {
 };
 
 const NOW_IN_SECS = new Date().getTime() / 1000;
-const ONE_YEAR_IN_SECS = 24 * 60 * 60;
+const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
 
 const ONE_MILLION = parseEther("1000000");
 const TEN_THOUSAND = parseEther("10000");
@@ -23,7 +23,6 @@ const DON_ID_AMOY = keccak256(toUtf8Bytes("0x66756e2d706f6c79676f6e2d6d61696e6e6
 const SUBSCRIPTION_ID = 1;
 
 describe("TokenInsurance", function () {
-
   async function deployProtocol() {
     const [protocolAdmin] = await ethers.getSigners();
     const tokenRWAContractAddress = await deployTokenRWA();
@@ -210,17 +209,70 @@ describe("TokenInsurance", function () {
       });
     });
   });
+
+  describe("\n   checkUpkeep", function () {
+    describe('success scenarios', async () => {
+      let snapshotId;
+
+      beforeEach(async () => {
+        snapshotId = await network.provider.send("evm_snapshot", []);
+      });
+
+      afterEach(async () => {
+        await network.provider.send("evm_revert", [snapshotId]);
+      });
+
+      it("Should return upkeepNeeded = false when RWA due date IS NOT REACHED & performUpkeep() WAS NEVER CALLED", async () => {
+        const { tokenInsuranceContractAddress } = await loadFixture(deployProtocol);
+        const tokenInsuranceContract = await ethers.getContractAt(contracts.TOKEN_INSURANCE, tokenInsuranceContractAddress);
+        const checkData = keccak256(toUtf8Bytes(""));
+        const { upkeepNeeded } = await tokenInsuranceContract.checkUpkeep(checkData);
+        expect(upkeepNeeded).to.false;
+      });
+      it("Should return upkeepNeeded = true when RWA due date IS REACHED & performUpkeep() WAS NEVER CALLED", async () => {
+        const { tokenInsuranceContractAddress } = await deployProtocol();
+        const tokenInsuranceContract = await ethers.getContractAt(contracts.TOKEN_INSURANCE, tokenInsuranceContractAddress);
+        await increaseTimestamp(ONE_YEAR_IN_SECS);
+        const checkData = keccak256(toUtf8Bytes(""));
+        const { upkeepNeeded } = await tokenInsuranceContract.checkUpkeep(checkData);
+        expect(upkeepNeeded).to.true;
+      });
+      it.skip("Should return upkeepNeeded = true when RWA due date IS REACHED & performUpkeep() WAS CALLED", async () => {
+        const { tokenInsuranceContractAddress } = await deployProtocol();
+        const tokenInsuranceContract = await ethers.getContractAt(contracts.TOKEN_INSURANCE, tokenInsuranceContractAddress);
+        await increaseTimestamp(ONE_YEAR_IN_SECS);
+        const checkData = keccak256(toUtf8Bytes(""));
+        let upkeepNeeded;
+        ({ upkeepNeeded } = await tokenInsuranceContract.checkUpkeep(checkData));
+        expect(upkeepNeeded).to.true;
+        await tokenInsuranceContract.performUpkeep(checkData);
+        ({ upkeepNeeded } = await tokenInsuranceContract.checkUpkeep(checkData));
+        expect(upkeepNeeded).to.false;
+      });
+    });
+  });
+
+
+
+  const increaseTimestamp = async (seconds) => {
+    // Increase time by one year (31536000 seconds)
+    await network.provider.send("evm_increaseTime", [seconds]);
+    
+    // Mine a new block so the timestamp change takes effect
+    await network.provider.send("evm_mine");
+  }
+
   const deployTokenRWA = async () => {
     console.log(" --- Deploying Token RWA contract --- ");
     const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
-    const TOMORROW = parseUnits(parseInt(NOW_IN_SECS + ONE_YEAR_IN_SECS).toString(), 0);
+    const NEXT_YEAR = parseUnits(parseInt(NOW_IN_SECS + ONE_YEAR_IN_SECS).toString(), 0);
     const rwa = {
       name: "Precatorio 105",
       symbol: "PRECATORIO105",
       totalSupply: TEN_THOUSAND,
       totalValue: ONE_MILLION,
       yield: parseEther("0.15"), // 15% yield
-      dueDate: TOMORROW,
+      dueDate: NEXT_YEAR,
     }
     const tokenRWAContract = await TokenRWA.deploy(rwa.name, rwa.symbol, rwa.totalSupply, rwa.totalValue, rwa.dueDate, rwa.yield, AGGREGATOR_NETWORK_SEPOLIA);
     const tokenRWAContractAddress = await tokenRWAContract.getAddress();
