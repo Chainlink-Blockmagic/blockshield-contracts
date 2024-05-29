@@ -15,6 +15,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "./interfaces/ITokenRWA.sol";
 import "./interfaces/IVault.sol";
 import "./libraries/PercentageUtils.sol";
+import "hardhat/console.sol";
 
 contract TokenInsurance is
     ERC20,
@@ -73,10 +74,10 @@ contract TokenInsurance is
     /// @dev JavaScript source code
     /// @dev Documentation: https://github.com/Chainlink-Blockmagic/blockshield-insurance-service
     string source =
-        "const tokenRWASymbol = args[0];"
+        "const tokenRWAAddress = args[0];"
         "// Execute the API request (Promise)"
         "const apiResponse = await Functions.makeHttpRequest({"
-        "    url: `https://blockshield-insurance-service-d541038b7771.herokuapp.com/api/v1/assets/${tokenRWASymbol}/settled`"
+        "    url: `https://blockshield-insurance-service-d541038b7771.herokuapp.com/api/v1/assets/address/${tokenRWAAddress}/settled`"
         "});"
         "if (apiResponse.error) {"
         "    console.error(apiResponse.error);"
@@ -97,15 +98,17 @@ contract TokenInsurance is
     error UnexpectedRequestID(bytes32 requestId);
 
     // Event to log responses
-    event Response(
+    event ApiResponse(
         bytes32 indexed requestId,
+        address indexed tokenRWA,
+        string symbol,
         bool settled,
         bytes response,
         bytes err
     );
-    event Request(
+    event ApiRequest(
         bytes32 indexed requestId,
-        string tokenRWA,
+        address indexed tokenRWA,
         string symbol
     );
     /////////////////////////////////////
@@ -177,18 +180,16 @@ contract TokenInsurance is
         //////////////////////////////////////////////////////////////////////
     }
 
-    function checkUpkeep(bytes calldata /* checkData */) external view override returns (bool upkeepNeeded, bytes memory performData) {
+    function checkUpkeep(bytes calldata /* checkData */) public view override returns (bool upkeepNeeded, bytes memory performData) {
         upkeepNeeded = !alreadyExecuted && isDueDateArrived();
         performData = new bytes(0);
     }
 
     function performUpkeep(bytes calldata /* performData */) external override {
-        if (!alreadyExecuted && isDueDateArrived()) {
-            string[] memory requestData = new string[](1);
-            requestData[0] = Strings.toHexString(uint256(uint160(securedAsset)), 20);
-            sendRequest(requestData);
-            alreadyExecuted = true;
-        }
+        (bool upkeepNeeded, ) = this.checkUpkeep(abi.encode(""));
+        require(upkeepNeeded, "RWA asset was not yet liquidated or already executed");
+        sendRequest();
+        alreadyExecuted = true;
     }
 
     function isDueDateArrived() internal view returns (bool) {
@@ -202,13 +203,17 @@ contract TokenInsurance is
 
     /**
      * @notice Sends an HTTP request for character information
-     * @param args The arguments to pass to the HTTP request
      * @return requestId The ID of the request
      */
-    function sendRequest(string[] memory args) public onlyRole(ADMIN_ROLE) returns (bytes32 requestId) {
+    function sendRequest() public onlyRole(ADMIN_ROLE) returns (bytes32 requestId) {
         FunctionsRequest.Request memory req;
         req.initializeRequestForInlineJavaScript(source); // Initialize the request with JS code
-        if (args.length > 0) req.setArgs(args); // Set the arguments for the request
+
+        string[] memory requestData = new string[](1);
+        requestData[0] = Strings.toHexString(uint256(uint160(securedAsset)), 20);
+        console.log("requestData[0]", requestData[0]);
+
+        if (requestData.length > 0) req.setArgs(requestData); // Set the arguments for the request
 
         // Send the request and store the request ID
         s_lastRequestId = _sendRequest(
@@ -219,8 +224,7 @@ contract TokenInsurance is
         );
 
         string memory symbol = ITokenRWA(securedAsset).symbol();
-        string memory tokenRWA = Strings.toHexString(uint256(uint160(securedAsset)), 20);
-        emit Request(s_lastRequestId, tokenRWA, symbol);
+        emit ApiRequest(s_lastRequestId, securedAsset, symbol);
 
         return s_lastRequestId;
     }
@@ -249,6 +253,7 @@ contract TokenInsurance is
         IVault(vault).handleRWAPayment(liquidationResponse, securedAsset);
 
         // Emit an event to log the response
-        emit Response(requestId, settled, s_lastResponse, s_lastError);
+        string memory symbol = ITokenRWA(securedAsset).symbol();
+        emit ApiResponse(requestId, securedAsset, symbol, settled, s_lastResponse, s_lastError);
     }
 }
