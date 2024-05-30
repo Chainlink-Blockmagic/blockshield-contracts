@@ -6,7 +6,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/ITokenInsurance.sol";
 import "./interfaces/ITokenRWA.sol";
 
-contract Vault is AccessControl, Ownable {
+contract Vault is
+    AccessControl,
+    Ownable {
 
     /// @dev Access control constants
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
@@ -89,6 +91,8 @@ contract Vault is AccessControl, Ownable {
             if (isInsuracePaid) emit InsurancePaid(securedAsset, currentInsuranceOwner, insuranceDetails.quantity, insuranceDetails.securedAmount, insuranceCost);
             else emit RWAYieldPaid(securedAsset, currentInsuranceOwner, insuranceDetails.quantity, insuranceDetails.securedAmount, insuranceCost);
         }
+
+        // TODO: SEND CCIP CALL TO TOKEN INSURANCE PRA TokenInsurance#selfdestruct()
     }
 
     function getInsuranceCost(ITokenInsurance insuranceContract, uint256 quantity) internal returns (uint256 insuranceCost) {
