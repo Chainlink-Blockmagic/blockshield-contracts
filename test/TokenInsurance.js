@@ -26,8 +26,7 @@ describe("TokenInsurance", function () {
     const [protocolAdmin] = await ethers.getSigners();
     const tokenRWAContractAddress = await deployTokenRWA();
     const vaultContractAddress = await deployVault();
-    const rwaLiquidationContractAddress = await deployRWALiquidationFunction();
-    const tokenInsuranceContractAddress = await deployTokenInsurance({ vaultAddress: vaultContractAddress, tokenRWAaddress: tokenRWAContractAddress, rwaLiquidationContractAddress: rwaLiquidationContractAddress });
+    const tokenInsuranceContractAddress = await deployTokenInsurance({ vaultAddress: vaultContractAddress, tokenRWAaddress: tokenRWAContractAddress });
 
     expect(tokenInsuranceContractAddress).to.not.equal(ZERO_ADDRESS);
     expect(vaultContractAddress).to.not.equal(ZERO_ADDRESS);
@@ -49,55 +48,60 @@ describe("TokenInsurance", function () {
 
   describe("Deployment", function () {
     describe('error scenarios', async () => {
-      it("Should revert if name is empty", async () => {
+      it("Should revert if _router address is zero", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.TOKEN_INSURANCE);
         await expect(TokenInsurance.deploy("", "PRECATORIO105", ZERO_ADDRESS, ZERO_ADDRESS, 0, ZERO_ADDRESS))
+        .to.be.revertedWith("router_ cannot be zero");
+      });
+      it("Should revert if name is empty", async () => {
+        const TokenInsurance = await ethers.getContractFactory(contracts.TOKEN_INSURANCE);
+        await expect(TokenInsurance.deploy("", "PRECATORIO105", ZERO_ADDRESS, ZERO_ADDRESS, 0, ROUTER_ID_AMOY))
         .to.be.revertedWith("Name cannot be empty");
       });
       it("Should revert if symbol is empty", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "", ZERO_ADDRESS, ZERO_ADDRESS, 0, ZERO_ADDRESS))
+        await expect(TokenInsurance.deploy("Precatorio 105", "", ZERO_ADDRESS, ZERO_ADDRESS, 0, ROUTER_ID_AMOY))
         .to.be.revertedWith("Symbol cannot be empty");
       });
       it("Should revert if symbol is less than 3 characters", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "PRE", ZERO_ADDRESS, ZERO_ADDRESS, 0, ZERO_ADDRESS))
+        await expect(TokenInsurance.deploy("Precatorio 105", "PRE", ZERO_ADDRESS, ZERO_ADDRESS, 0, ROUTER_ID_AMOY))
         .to.be.revertedWith("Symbol must be longer than 3 characters");
       });
       it("Should revert if securedAsset_ address is zero address", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", ZERO_ADDRESS, ZERO_ADDRESS, 0, ZERO_ADDRESS))
+        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", ZERO_ADDRESS, ZERO_ADDRESS, 0, ROUTER_ID_AMOY))
         .to.be.revertedWith("Secured asset cannot be zero");
       });
       it("Should revert if vault address is zero address", async () => {
         const [protocolAdmin] = await ethers.getSigners();
         const TokenInsurance = await ethers.getContractFactory(contracts.TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", protocolAdmin.address, ZERO_ADDRESS, 0, ZERO_ADDRESS))
+        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", protocolAdmin.address, ZERO_ADDRESS, 0, ROUTER_ID_AMOY))
         .to.be.revertedWith("Vault address cannot be zero");
       });
       it("Should revert if prime is zero", async () => {
         const [protocolAdmin] = await ethers.getSigners();
         const TokenInsurance = await ethers.getContractFactory(contracts.TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", protocolAdmin.address, protocolAdmin.address, 0, ZERO_ADDRESS))
+        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", protocolAdmin.address, protocolAdmin.address, 0, ROUTER_ID_AMOY))
         .to.be.revertedWith("Invalid prime percentage");
       });
       it("Should revert if prime is greater than MAX_PERCENTAGE (1)", async () => {
         const [protocolAdmin] = await ethers.getSigners();
         const TokenInsurance = await ethers.getContractFactory(contracts.TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", protocolAdmin.address, protocolAdmin.address, parseEther("1.01"), ZERO_ADDRESS))
+        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", protocolAdmin.address, protocolAdmin.address, parseEther("1.01"), ROUTER_ID_AMOY))
         .to.be.revertedWith("Invalid prime percentage");
       });
       it("Should revert if prime is less than MIN_PERCENTAGE (0.01)", async () => {
         const [protocolAdmin] = await ethers.getSigners();
         const TokenInsurance = await ethers.getContractFactory(contracts.TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", protocolAdmin.address, protocolAdmin.address, parseEther("0.009"), ZERO_ADDRESS))
+        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", protocolAdmin.address, protocolAdmin.address, parseEther("0.009"), ROUTER_ID_AMOY))
         .to.be.revertedWith("Invalid prime percentage");
       });
       it("Should revert if prime is greater or equals than RWA yield", async () => {
         const [protocolAdmin] = await ethers.getSigners();
         const TokenInsurance = await ethers.getContractFactory(contracts.TOKEN_INSURANCE);
         const tokenRWAContractAddress = await deployTokenRWA();
-        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", tokenRWAContractAddress, protocolAdmin.address, parseEther("0.15"), ZERO_ADDRESS))
+        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", tokenRWAContractAddress, protocolAdmin.address, parseEther("0.15"), ROUTER_ID_AMOY))
         .to.be.revertedWith("Prime must be less than yield");
       });
     });
@@ -249,8 +253,6 @@ describe("TokenInsurance", function () {
     });
   });
 
-
-
   const increaseTimestamp = async (seconds) => {
     // Increase time by one year (31536000 seconds)
     await network.provider.send("evm_increaseTime", [seconds]);
@@ -295,20 +297,11 @@ describe("TokenInsurance", function () {
       securedAsset: tokenRWAaddress,
       vault: vaultAddress,
       prime: parseEther("0.05"), // 5% prime
-      rwaLiquidation: rwaLiquidationContractAddress
+      router: ROUTER_ID_AMOY
     }
-    const tokenInsuranceContract = await TokenInsurance.deploy(insurance.name, insurance.symbol, insurance.securedAsset, insurance.vault, insurance.prime, insurance.rwaLiquidation);
+    const tokenInsuranceContract = await TokenInsurance.deploy(insurance.name, insurance.symbol, insurance.securedAsset, insurance.vault, insurance.prime, insurance.router);
     const tokenInsuranceContractAddress = await tokenInsuranceContract.getAddress();
     console.log(`TokenInsurance address: ${tokenInsuranceContractAddress}`);
     return tokenInsuranceContractAddress;
-  };
-
-  const deployRWALiquidationFunction = async () => {
-    console.log(" --- Deploying RWALiquidationFunction contract --- ");
-    const RwaLiquidation = await ethers.getContractFactory(contracts.RWA_LIQUIDATION);
-    const rwaLiquidationContract = await RwaLiquidation.deploy(ROUTER_ID_AMOY);
-    const rwaLiquidationContractAddress = await rwaLiquidationContract.getAddress();
-    console.log(`RWALiquidationFunction address: ${rwaLiquidationContractAddress}`);
-    return rwaLiquidationContractAddress;
   };
 });

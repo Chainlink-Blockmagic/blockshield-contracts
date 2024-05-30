@@ -8,7 +8,7 @@ import {FunctionsRequest} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/l
 /**
  * @title Functions contract used for Automation
 */
-contract RWALiquidationFunctionWithUpdateRequest is
+abstract contract FunctionWithUpdateRequest is
     FunctionsClient,
     ConfirmedOwner
 {
@@ -20,6 +20,7 @@ contract RWALiquidationFunctionWithUpdateRequest is
     bytes32 public s_lastRequestId;
     bytes public s_lastResponse;
     bytes public s_lastError;
+
     bool public s_settled;
 
     error UnexpectedRequestID(bytes32 requestId);
@@ -30,9 +31,12 @@ contract RWALiquidationFunctionWithUpdateRequest is
     event ApiResponse(bytes32 indexed requestId, bytes response, bytes err, bool settled);
     event ApiRequest(bytes32 indexed requestId, address indexed tokenRWA, string symbol);
 
-    constructor(address router) FunctionsClient(router) ConfirmedOwner(msg.sender) {}
+    constructor(address router_, address sender_) FunctionsClient(router_) ConfirmedOwner(sender_) {
+        require(router_ != address(0), "router_ cannot be zero");
+        require(sender_ != address(0), "sender_ cannot be zero");
+    }
 
-    function sendRequest(address tokenRWA, string memory symbol) external {
+    function sendGetLiquidationRequest(address tokenRWA, string memory symbol) public {
         try
             i_router.sendRequest(
                 subscriptionId,
@@ -90,6 +94,11 @@ contract RWALiquidationFunctionWithUpdateRequest is
         s_lastError = err;
         s_settled = response.length > 0 ? abi.decode(response, (uint256)) == 1 : false;
 
+        callVault();
+
         emit ApiResponse(requestId, s_lastResponse, s_lastError, s_settled);
     }
+
+
+    function callVault() internal virtual;
 }

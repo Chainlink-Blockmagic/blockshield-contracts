@@ -3,6 +3,10 @@ pragma solidity ^0.8.24;
 
 import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/automation/AutomationCompatible.sol";
 
+import {FunctionsClient} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/FunctionsClient.sol";
+import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
+import {FunctionsRequest} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol";
+
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
@@ -11,8 +15,9 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "./interfaces/ITokenRWA.sol";
 import "./interfaces/IVault.sol";
-import "./interfaces/IRWALiquidationFunctionWithUpdateRequest.sol";
 import "./libraries/PercentageUtils.sol";
+import "./FunctionWithUpdateRequest.sol";
+
 import "hardhat/console.sol";
 
 contract TokenInsurance is
@@ -20,7 +25,8 @@ contract TokenInsurance is
     ERC20Burnable,
     ReentrancyGuard,
     AutomationCompatibleInterface,
-    AccessControl
+    AccessControl,
+    FunctionWithUpdateRequest
 {
     using SafeERC20 for IERC20;
     using PercentageUtils for uint256;
@@ -37,15 +43,19 @@ contract TokenInsurance is
     
     /// @notice Prime represent the value of the inssurance. It is a percentage applied to the value of the RWA
     uint256 public prime;
-  
-    /// @notice 
-    address public rwaLiquidation;
 
     /// @notice Automation
     bool public alreadyExecuted;
 
     /// @notice It will mint the total supply of the RWA secured asset to the contract itself
-    constructor(string memory name_, string memory symbol_, address securedAsset_, address vault_, uint256 prime_, address rwaLiquidation_) ERC20(name_, symbol_) {
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        address securedAsset_,
+        address vault_,
+        uint256 prime_,
+        address router_
+    ) ERC20(name_, symbol_) FunctionWithUpdateRequest(router_, msg.sender) {
         require(bytes(name_).length > 0, "Name cannot be empty");
         require(bytes(symbol_).length > 0, "Symbol cannot be empty");
         require(bytes(symbol_).length > 3, "Symbol must be longer than 3 characters");
@@ -53,13 +63,10 @@ contract TokenInsurance is
         require(vault_ != address(0), "Vault address cannot be zero");
         require(prime_.checkPercentageThreshold(), "Invalid prime percentage");
         require(prime_ < ITokenRWA(securedAsset_).yield(), "Prime must be less than yield");
-        require(rwaLiquidation_ != address(0), "Router address cannot be zero");
 
         vault = vault_;
         securedAsset = securedAsset_;
         prime = prime_;
-
-        rwaLiquidation = rwaLiquidation_;
 
         _grantRole(ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, address(this));
@@ -106,6 +113,10 @@ contract TokenInsurance is
         //////////////////////////////////////////////////////////////////////
     }
 
+    function isDueDateArrived() internal view returns (bool) {
+        return block.timestamp >= ITokenRWA(securedAsset).dueDate();
+    }
+
     function checkUpkeep(bytes calldata /* checkData */) public view override returns (bool upkeepNeeded, bytes memory performData) {
         upkeepNeeded = !alreadyExecuted && isDueDateArrived();
         performData = new bytes(0);
@@ -114,11 +125,13 @@ contract TokenInsurance is
     function performUpkeep(bytes calldata /* performData */) external override {
         (bool upkeepNeeded, ) = this.checkUpkeep(abi.encode(""));
         require(upkeepNeeded, "RWA asset was not yet liquidated or already executed");
-        IRWALiquidationFunctionWithUpdateRequest(rwaLiquidation).sendRequest(securedAsset, ITokenRWA(securedAsset).symbol());
+        sendGetLiquidationRequest(securedAsset, ITokenRWA(securedAsset).symbol());
         alreadyExecuted = true;
     }
 
-    function isDueDateArrived() internal view returns (bool) {
-        return block.timestamp >= ITokenRWA(securedAsset).dueDate();
+    function callVault() internal override {
+        // TODO: CCIP call
+        bool liquidationResponse = s_settled;
+        IVault(vault).handleRWAPayment(liquidationResponse, securedAsset);
     }
 }

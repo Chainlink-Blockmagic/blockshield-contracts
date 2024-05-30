@@ -25,8 +25,7 @@ describe("Vault", function () {
     const [protocolAdmin, client] = await ethers.getSigners();
     const tokenRWAContractAddress = await deployTokenRWA();
     const vaultContractAddress = await deployVault();
-    const rwaLiquidationContractAddress = await deployRWALiquidationFunction();
-    const tokenInsuranceContractAddress = await deployTokenInsurance({ vaultAddress: vaultContractAddress, tokenRWAaddress: tokenRWAContractAddress, rwaLiquidationContractAddress: rwaLiquidationContractAddress });
+    const tokenInsuranceContractAddress = await deployTokenInsurance({ vaultAddress: vaultContractAddress, tokenRWAaddress: tokenRWAContractAddress });
 
     expect(tokenInsuranceContractAddress).to.not.equal(ZERO_ADDRESS);
     expect(vaultContractAddress).to.not.equal(ZERO_ADDRESS);
@@ -184,20 +183,11 @@ describe("Vault", function () {
       securedAsset: tokenRWAaddress,
       vault: vaultAddress,
       prime: parseEther("0.05"), // 5% prime
-      rwaLiquidation: rwaLiquidationContractAddress
+      router: ROUTER_ID_AMOY
     }
-    const tokenInsuranceContract = await TokenInsurance.deploy(insurance.name, insurance.symbol, insurance.securedAsset, insurance.vault, insurance.prime, insurance.rwaLiquidation);
+    const tokenInsuranceContract = await TokenInsurance.deploy(insurance.name, insurance.symbol, insurance.securedAsset, insurance.vault, insurance.prime, insurance.router);
     const tokenInsuranceContractAddress = await tokenInsuranceContract.getAddress();
     console.log(`TokenInsurance address: ${tokenInsuranceContractAddress}`);
     return tokenInsuranceContractAddress;
-  };
-
-  const deployRWALiquidationFunction = async () => {
-    console.log(" --- Deploying RWALiquidationFunction contract --- ");
-    const RwaLiquidation = await ethers.getContractFactory(contracts.RWA_LIQUIDATION);
-    const rwaLiquidationContract = await RwaLiquidation.deploy(ROUTER_ID_AMOY);
-    const rwaLiquidationContractAddress = await rwaLiquidationContract.getAddress();
-    console.log(`RWALiquidationFunction address: ${rwaLiquidationContractAddress}`);
-    return rwaLiquidationContractAddress;
   };
 });
