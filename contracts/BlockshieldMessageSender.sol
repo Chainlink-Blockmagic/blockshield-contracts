@@ -6,14 +6,11 @@ import {IERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-sol
 import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
 import {LinkTokenInterface} from "@chainlink/contracts/src/v0.8/shared/interfaces/LinkTokenInterface.sol";
 
-interface Sender {
-    function send(uint256 _amount) external returns (bytes32);
-}
 
 /// @title BlockshieldMessageSender
 /// @notice Send EVM2AnyMessage CrossChain using CCIP protocol
 /// @dev https://docs.chain.link/ccip/supported-networks
-contract BlockshieldMessageSender is Sender {
+contract BlockshieldMessageSender {
     /// @dev Contract variables
     IRouterClient public router;
     LinkTokenInterface public linkToken;
@@ -54,7 +51,7 @@ contract BlockshieldMessageSender is Sender {
 
     /// @dev Send cross-chain message
     /// @param _amount The amount to send on message
-    function send(uint256 _amount) override external returns (bytes32) {
+    function send(uint256 _amount, bytes calldata data) external returns (bytes32) {
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         Client.EVMTokenAmount memory tokenAmount = Client.EVMTokenAmount({
             token: transferTokenAddress,
@@ -64,11 +61,7 @@ contract BlockshieldMessageSender is Sender {
 
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(destinationReceiver),
-            data: abi.encodeWithSignature(
-                "insure(address,uint256)",
-                address(0),
-                _amount
-            ),
+            data: data,
             tokenAmounts: tokenAmounts,
             extraArgs: Client._argsToBytes(
                 Client.EVMExtraArgsV1({ gasLimit: 980_000 })
