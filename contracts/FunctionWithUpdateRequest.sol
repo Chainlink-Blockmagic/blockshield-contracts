@@ -94,11 +94,11 @@ abstract contract FunctionWithUpdateRequest is
         s_lastError = err;
         s_settled = response.length > 0 ? abi.decode(response, (uint256)) == 1 : false;
 
-        callVault();
+        callVaultHandleRWAPayment();
 
         emit ApiResponse(requestId, s_lastResponse, s_lastError, s_settled);
     }
 
 
-    function callVault() internal virtual;
+    function callVaultHandleRWAPayment() internal virtual;
 }

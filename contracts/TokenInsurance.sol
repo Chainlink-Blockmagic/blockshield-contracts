@@ -129,7 +129,7 @@ contract TokenInsurance is
         alreadyExecuted = true;
     }
 
-    function callVault() internal override {
+    function callVaultHandleRWAPayment() internal override {
         // TODO: CCIP call
         bool liquidationResponse = s_settled;
         IVault(vault).handleRWAPayment(liquidationResponse, securedAsset);
