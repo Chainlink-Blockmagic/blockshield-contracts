@@ -4,13 +4,9 @@ pragma solidity ^0.8.24;
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
 import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications/CCIPReceiver.sol";
 
-interface Insure {
-    function insure(address _account, uint256 _amount) external;
-}
-
 /// @title BlockshieldMessageReceiver
 /// @notice Send EVM2AnyMessage CrossChain using CCIP protocol
-contract BlockshieldMessageReceiver is CCIPReceiver, Insure {
+abstract contract VaultMessageReceiver is CCIPReceiver {
     event InsureCallErrorEvent(
         bytes32 indexed messageId, // The unique ID of the CCIP message.
         address sender, // The address of the sender from the source chain.
@@ -29,16 +25,25 @@ contract BlockshieldMessageReceiver is CCIPReceiver, Insure {
     address private s_lastReceivedTokenAddress; // Store the last received token address.
     uint256 private s_lastReceivedTokenAmount; // Store the last received amount.
 
-    constructor(address _router) CCIPReceiver(_router) {}
+    address public vault;
+
+    constructor(address _router, address vault_) CCIPReceiver(_router) {
+        vault = vault_;
+    }
 
     function _ccipReceive(Client.Any2EVMMessage memory message) internal override {
         s_lastReceivedMessageId = message.messageId;
 
-        (bool success, ) = address(this).call(message.data);
+        // (bool success, ) = address(this).call(message.data);
+        (bool success, ) = vault.call(message.data);
 
         s_lastReceivedTokenAddress = message.destTokenAmounts[0].token;
         s_lastReceivedTokenAmount = message.destTokenAmounts[0].amount;
-        
+        // param 1
+        // param 1
+        // param 1
+        // param 1
+
         if (success) {
             emit MessageReceived(
                 s_lastReceivedMessageId,
@@ -53,7 +58,6 @@ contract BlockshieldMessageReceiver is CCIPReceiver, Insure {
                 s_lastReceivedTokenAddress,
                 s_lastReceivedTokenAmount
             );
-            
             revert();
         }
     }
