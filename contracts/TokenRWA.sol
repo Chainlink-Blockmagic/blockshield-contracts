@@ -48,7 +48,7 @@ contract TokenRWA is ERC20, ERC20Burnable, AccessControl {
         dueDate = dueDate_;
         yield = yield_;
         totalValue = totalValue_;
-        unitValue = totalValue / totalSupply_ * 10 ** decimals();
+        unitValue = totalValue * 10 ** decimals() / totalSupply_;
         priceFeed = AggregatorV3Interface(aggregatorNetwork);
 
         _grantRole(ADMIN_ROLE, msg.sender);

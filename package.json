@@ -6,19 +6,20 @@
   "author": "Ramiro Gonzalez <ramirogc21@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "deploy:amoy": "npx hardhat run scripts/deploy.js --network amoy"
+    "deploy:amoy": "npx hardhat run scripts/deploy.js",
+    "update-request:amoy": "node scripts/updateTokenInsuranceRequest.js 0xC22a79eBA640940ABB6dF0f7982cc119578E11De fun-polygon-amoy-1 3000000"
   },
   "devDependencies": {
     "@chainlink/contracts": "^1.1.0",
     "@chainlink/contracts-ccip": "1.4.0",
+    "@chainlink/functions-toolkit": "^0.2.7",
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
     "@nomicfoundation/hardhat-ethers": "^3.0.0",
     "@nomicfoundation/hardhat-ignition": "^0.15.0",
     "@nomicfoundation/hardhat-ignition-ethers": "^0.15.0",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "@nomicfoundation/hardhat-verify": "^2.0.0",
-    "@nomiclabs/hardhat-etherscan": "^3.1.8",
+    "@nomicfoundation/hardhat-verify": "^2.0.7",
     "@openzeppelin/contracts": "^5.0.2",
     "@openzeppelin/contracts-upgradeable": "^5.0.2",
     "@typechain/ethers-v6": "^0.5.0",
