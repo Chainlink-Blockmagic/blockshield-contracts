@@ -1,12 +1,13 @@
 const { loadFixture } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
-const { parseEther, parseUnits, keccak256, toUtf8Bytes } = require("ethers");
+const { parseEther, parseUnits } = require("ethers");
 
 const contracts = {
   VAULT: "Vault",
   TOKEN_RWA: "TokenRWA",
   TOKEN_INSURANCE: "TokenInsurance",
-  TOKEN_FACTORY: "TokenFactory"
+  TOKEN_FACTORY: "TokenFactory",
+  RWA_LIQUIDATION: "RWALiquidationFunctionWithUpdateRequest"
 };
 
 const NOW_IN_SECS = new Date().getTime() / 1000;
@@ -17,8 +18,6 @@ const TEN_THOUSAND = parseEther("10000");
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const AGGREGATOR_NETWORK_SEPOLIA = "0x694AA1769357215DE4FAC081bf1f309aDC325306";
 const ROUTER_ID_AMOY = "0xC22a79eBA640940ABB6dF0f7982cc119578E11De";
-const DON_ID_AMOY = keccak256(toUtf8Bytes("0x66756e2d706f6c79676f6e2d6d61696e6e65742d310000000000000000000000"));
-const SUBSCRIPTION_ID = 1;
 
 describe("Vault", function () {
 
@@ -26,7 +25,8 @@ describe("Vault", function () {
     const [protocolAdmin, client] = await ethers.getSigners();
     const tokenRWAContractAddress = await deployTokenRWA();
     const vaultContractAddress = await deployVault();
-    const tokenInsuranceContractAddress = await deployTokenInsurance({ vaultAddress: vaultContractAddress, tokenRWAaddress: tokenRWAContractAddress });
+    const rwaLiquidationContractAddress = await deployRWALiquidationFunction();
+    const tokenInsuranceContractAddress = await deployTokenInsurance({ vaultAddress: vaultContractAddress, tokenRWAaddress: tokenRWAContractAddress, rwaLiquidationContractAddress: rwaLiquidationContractAddress });
 
     expect(tokenInsuranceContractAddress).to.not.equal(ZERO_ADDRESS);
     expect(vaultContractAddress).to.not.equal(ZERO_ADDRESS);
@@ -175,23 +175,29 @@ describe("Vault", function () {
     return vaultContractAddress;
   };
 
-  const deployTokenInsurance = async ({ vaultAddress, tokenRWAaddress }) => {
+  const deployTokenInsurance = async ({ vaultAddress, tokenRWAaddress, rwaLiquidationContractAddress }) => {
     console.log(" --- Deploying Token Insurance contract --- ");
     const TokenInsurance = await ethers.getContractFactory(contracts.TOKEN_INSURANCE);
     const insurance = {
       name: "Precatorio 105",
       symbol: "blockshield.PRECATORIO105",
-      yield: parseEther("0.15"), // 15% yield
-      prime: parseEther("0.05"), // 5% prime
       securedAsset: tokenRWAaddress,
       vault: vaultAddress,
-      router: ROUTER_ID_AMOY, // Polygon Amoy Router
-      donId: DON_ID_AMOY, // Polygon Amoy Router
-      gasLimit: 300000
+      prime: parseEther("0.05"), // 5% prime
+      rwaLiquidation: rwaLiquidationContractAddress
     }
-    const tokenInsuranceContract = await TokenInsurance.deploy(insurance.name, insurance.symbol, insurance.securedAsset, insurance.vault, insurance.prime, insurance.router, insurance.donId, insurance.gasLimit);
+    const tokenInsuranceContract = await TokenInsurance.deploy(insurance.name, insurance.symbol, insurance.securedAsset, insurance.vault, insurance.prime, insurance.rwaLiquidation);
     const tokenInsuranceContractAddress = await tokenInsuranceContract.getAddress();
     console.log(`TokenInsurance address: ${tokenInsuranceContractAddress}`);
     return tokenInsuranceContractAddress;
+  };
+
+  const deployRWALiquidationFunction = async () => {
+    console.log(" --- Deploying RWALiquidationFunction contract --- ");
+    const RwaLiquidation = await ethers.getContractFactory(contracts.RWA_LIQUIDATION);
+    const rwaLiquidationContract = await RwaLiquidation.deploy(ROUTER_ID_AMOY);
+    const rwaLiquidationContractAddress = await rwaLiquidationContract.getAddress();
+    console.log(`RWALiquidationFunction address: ${rwaLiquidationContractAddress}`);
+    return rwaLiquidationContractAddress;
   };
 });
