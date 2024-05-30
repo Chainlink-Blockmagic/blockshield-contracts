@@ -101,7 +101,7 @@
     "@scroll-tech/contracts" "0.1.0"
     semver "^7.6.2"
 
-"@chainlink/functions-toolkit@^0.2.8":
+"@chainlink/functions-toolkit@^0.2.7":
   version "0.2.8"
   resolved "https://registry.yarnpkg.com/@chainlink/functions-toolkit/-/functions-toolkit-0.2.8.tgz#60b90a5c635d4fca586fadce93e29ac8d438717f"
   integrity sha512-n7WicB5N9m1jZAu5p8Bh66oMVRc04L0usrr7dbuHl8ONybzraEDWc6fopXJKKyF529NEGr4B4c9nYcD5ZZt0Dw==
