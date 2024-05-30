@@ -118,7 +118,7 @@ contract TokenInsurance is
     }
 
     function checkUpkeep(bytes calldata /* checkData */) public view override returns (bool upkeepNeeded, bytes memory performData) {
-        upkeepNeeded = !alreadyExecuted && isDueDateArrived();
+        upkeepNeeded = !alreadyExecuted && isDueDateArrived() && request.length > 0;
         performData = new bytes(0);
     }
 
