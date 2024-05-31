@@ -25,3 +25,8 @@ Also we need compatibility for Chainlink Automations in **Source Blockchain Netw
 
 So check [Automations - Supported networks](https://docs.chain.link/chainlink-automation/overview/supported-networks)
 
+## Compatible networks
+| Network | CCIP Lanes available | CCIP with USDC support| Function | Automation |
+| :---: | :---: | :---: | :---: | :---: | 
+| Polygon Amoy | Optimism Sepolia | x | x | x |
+
