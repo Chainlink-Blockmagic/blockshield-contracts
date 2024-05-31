@@ -31,6 +31,13 @@ const SOURCE_CHAIN_CCIP_DETAILS = {
   destinationChainSelector: DESTINATION_CHAIN_OPTIMISM_SEPOLIA,
   linkAddress: LINK_ADDRESS_AMOY
 };
+
+const FUNCTIONS = {
+  subscriptionId: 264,
+  gasLimitCallback: "3000000",
+  donId: keccak256(toUtf8Bytes("0x66756e2d706f6c79676f6e2d6d61696e6e65742d310000000000000000000000")),
+  requestBody: keccak256(toUtf8Bytes("something")),
+}
 // const DON_ID_AMOY = keccak256(toUtf8Bytes("0x66756e2d706f6c79676f6e2d6d61696e6e65742d310000000000000000000000"));
 
 describe("TokenInsurance", function () {
@@ -235,34 +242,37 @@ describe("TokenInsurance", function () {
 
   describe("\n   checkUpkeep", function () {
     describe('success scenarios', async () => {
-      let snapshotId;
-
-      beforeEach(async () => {
-        snapshotId = await network.provider.send("evm_snapshot", []);
-      });
-
-      afterEach(async () => {
-        await network.provider.send("evm_revert", [snapshotId]);
-      });
-
-      it("Should return upkeepNeeded = false when RWA due date IS NOT REACHED & performUpkeep() WAS NEVER CALLED", async () => {
-        const { tokenInsuranceContractAddress } = await loadFixture(deployProtocol);
+      it("Should return upkeepNeeded = false when => requestBody IS NOT SET && RWA due date IS NOT REACHED && performUpkeep() WAS NEVER CALLED", async () => {
+        const { tokenInsuranceContractAddress } = await loadFixture(deployProtocolWithTokenInsuranceSetup);
         const tokenInsuranceContract = await ethers.getContractAt(contracts.MOCK_TOKEN_INSURANCE, tokenInsuranceContractAddress);
         const checkData = keccak256(toUtf8Bytes(""));
         const { upkeepNeeded } = await tokenInsuranceContract.checkUpkeep(checkData);
         expect(upkeepNeeded).to.false;
       });
-      it("Should return upkeepNeeded = true when RWA due date IS REACHED & performUpkeep() WAS NEVER CALLED", async () => {
-        const { tokenInsuranceContractAddress } = await deployProtocol();
+      it("Should return upkeepNeeded = false when => requestBody IS SET && RWA due date IS NOT REACHED && performUpkeep() WAS NEVER CALLED", async () => {
+        const { tokenInsuranceContractAddress } = await loadFixture(deployProtocolWithTokenInsuranceSetup);
         const tokenInsuranceContract = await ethers.getContractAt(contracts.MOCK_TOKEN_INSURANCE, tokenInsuranceContractAddress);
+        await tokenInsuranceFunctionSetup({ tokenInsuranceContract });
+        const checkData = keccak256(toUtf8Bytes(""));
+        const { upkeepNeeded } = await tokenInsuranceContract.checkUpkeep(checkData);
+        expect(upkeepNeeded).to.false;
+      });
+      it("Should return upkeepNeeded = true when => requestBody IS SET && RWA due date IS REACHED && performUpkeep() WAS NEVER CALLED", async () => {
+        const snapshotId = await network.provider.send("evm_snapshot", []);
+        const { tokenInsuranceContractAddress } = await deployProtocolWithTokenInsuranceSetup();
+        const tokenInsuranceContract = await ethers.getContractAt(contracts.MOCK_TOKEN_INSURANCE, tokenInsuranceContractAddress);
+        await tokenInsuranceFunctionSetup({ tokenInsuranceContract });
         await increaseTimestamp(ONE_YEAR_IN_SECS);
         const checkData = keccak256(toUtf8Bytes(""));
         const { upkeepNeeded } = await tokenInsuranceContract.checkUpkeep(checkData);
         expect(upkeepNeeded).to.true;
+        await network.provider.send("evm_revert", [snapshotId]);
       });
-      it.skip("Should return upkeepNeeded = true when RWA due date IS REACHED & performUpkeep() WAS CALLED", async () => {
+      it("Should return upkeepNeeded = true when => requestBody IS SET && RWA due date IS REACHED && performUpkeep() WAS CALLED", async () => {
+        const snapshotId = await network.provider.send("evm_snapshot", []);
         const { tokenInsuranceContractAddress } = await deployProtocol();
         const tokenInsuranceContract = await ethers.getContractAt(contracts.MOCK_TOKEN_INSURANCE, tokenInsuranceContractAddress);
+        await tokenInsuranceFunctionSetup({ tokenInsuranceContract });
         await increaseTimestamp(ONE_YEAR_IN_SECS);
         const checkData = keccak256(toUtf8Bytes(""));
         let upkeepNeeded;
@@ -271,7 +281,37 @@ describe("TokenInsurance", function () {
         await tokenInsuranceContract.performUpkeep(checkData);
         ({ upkeepNeeded } = await tokenInsuranceContract.checkUpkeep(checkData));
         expect(upkeepNeeded).to.false;
+        await network.provider.send("evm_revert", [snapshotId]);
       });
+    });
+  });
+
+  describe("\n   performUpkeep", function () {
+    it("Should perform upkeep when upkeepNeeded = true setting TRUE alreadyExecuted flag", async () => {
+      const snapshotId = await network.provider.send("evm_snapshot", []);
+      const { tokenInsuranceContractAddress } = await deployProtocolWithTokenInsuranceSetup();
+      const tokenInsuranceContract = await ethers.getContractAt(contracts.MOCK_TOKEN_INSURANCE, tokenInsuranceContractAddress);
+      await tokenInsuranceFunctionSetup({ tokenInsuranceContract });
+      await increaseTimestamp(ONE_YEAR_IN_SECS);
+      const checkData = keccak256(toUtf8Bytes(""));
+      await tokenInsuranceContract.performUpkeep(checkData);
+      expect(await tokenInsuranceContract.alreadyExecuted()).to.true;
+      await network.provider.send("evm_revert", [snapshotId]);
+    });
+
+    it("Should perform upkeep and emit performUpkeep event", async () => {
+      const snapshotId = await network.provider.send("evm_snapshot", []);
+      const { tokenInsuranceContractAddress, tokenRWAContractAddress } = await deployProtocolWithTokenInsuranceSetup();
+      const tokenInsuranceContract = await ethers.getContractAt(contracts.MOCK_TOKEN_INSURANCE, tokenInsuranceContractAddress);
+      await tokenInsuranceFunctionSetup({ tokenInsuranceContract });
+      await increaseTimestamp(ONE_YEAR_IN_SECS);
+      const checkData = keccak256(toUtf8Bytes(""));
+      await expect(tokenInsuranceContract.performUpkeep(checkData))
+      .to.emit(tokenInsuranceContract, "PerformUpkeep").withArgs(
+        tokenRWAContractAddress,
+        tokenInsuranceContractAddress
+      );
+      await network.provider.send("evm_revert", [snapshotId]);
     });
   });
 
@@ -414,5 +454,16 @@ describe("TokenInsurance", function () {
     const mockUSDCContract = await ethers.getContractAt(contracts.MOCK_USDC, mockUSDCContractAddress);
     const tx_mint = await mockUSDCContract.mint(address, amount);
     await tx_mint.wait();
+  };
+
+  const tokenInsuranceFunctionSetup = async ({ tokenInsuranceContract }) => {
+    // Functions setup
+    const tx = await tokenInsuranceContract.updateRequest(
+      FUNCTIONS.requestBody,
+      FUNCTIONS.subscriptionId,
+      FUNCTIONS.gasLimitCallback,
+      FUNCTIONS.donId
+    );
+    await tx.wait();
   };
 });
