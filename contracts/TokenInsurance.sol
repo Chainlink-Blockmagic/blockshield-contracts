@@ -13,10 +13,10 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "./interfaces/ITokenRWA.sol";
-import "./interfaces/IVault.sol";
+
 import "./libraries/PercentageUtils.sol";
 import "./FunctionWithUpdateRequest.sol";
+import "./BlockshieldMessageSender.sol";
 
 import "hardhat/console.sol";
 
@@ -26,7 +26,8 @@ contract TokenInsurance is
     ReentrancyGuard,
     AutomationCompatibleInterface,
     AccessControl,
-    FunctionWithUpdateRequest
+    FunctionWithUpdateRequest,
+    BlockshieldMessageSender
 {
     using SafeERC20 for IERC20;
     using PercentageUtils for uint256;
@@ -47,6 +48,17 @@ contract TokenInsurance is
     /// @notice Automation
     bool public alreadyExecuted;
 
+    TokenRWAInfo public tokenRWAInfo;
+    struct TokenRWAInfo {
+        uint256 totalSupply;
+        uint256 unitValue;
+        uint256 decimals;
+        uint256 dueDate;
+        string symbol;
+    }
+
+    event InsuranceHired(address indexed sender, address insurance, uint256 amount);
+
     /// @notice It will mint the total supply of the RWA secured asset to the contract itself
     constructor(
         string memory name_,
@@ -54,15 +66,22 @@ contract TokenInsurance is
         address securedAsset_,
         address vault_,
         uint256 prime_,
-        address router_
-    ) ERC20(name_, symbol_) FunctionWithUpdateRequest(router_, msg.sender) {
+        uint256 yield_,
+        address routerFunctions_,
+        address routerCCIP_
+    )
+        ERC20(name_, symbol_)
+        FunctionWithUpdateRequest(routerFunctions_, msg.sender)
+        BlockshieldMessageSender(routerCCIP_)
+    {
         require(bytes(name_).length > 0, "Name cannot be empty");
         require(bytes(symbol_).length > 0, "Symbol cannot be empty");
         require(bytes(symbol_).length > 3, "Symbol must be longer than 3 characters");
         require(securedAsset_ != address(0), "Secured asset cannot be zero");
         require(vault_ != address(0), "Vault address cannot be zero");
         require(prime_.checkPercentageThreshold(), "Invalid prime percentage");
-        require(prime_ < ITokenRWA(securedAsset_).yield(), "Prime must be less than yield");
+        require(yield_.checkPercentageThreshold(), "Prime must be less than yield");
+        require(prime_ < yield_, "Prime must be less than yield");
 
         vault = vault_;
         securedAsset = securedAsset_;
@@ -72,49 +91,37 @@ contract TokenInsurance is
         _grantRole(ADMIN_ROLE, address(this));
     }
 
-    function hireInsurance(uint256 quantity_) external payable nonReentrant {
+    function hireInsurance(uint256 quantity_) external nonReentrant {
         require(quantity_ > 0, "Cannot secure zero tokens");
-        require(quantity_ <= IERC20(securedAsset).totalSupply(), "Cannot secure more than associated RWA supply");
-        require(totalSupply() + quantity_ <= IERC20(securedAsset).totalSupply(), "Cannot secure desired amount of tokens");
+        require(transferTokenAddress != address(0), "transferTokenAddress cannot be zero address");
+        require(quantity_ <= tokenRWAInfo.totalSupply, "Cannot secure more than associated RWA supply");
+        require(totalSupply() + quantity_ <= tokenRWAInfo.totalSupply, "Cannot secure desired amount of tokens");
 
-        //FIXME: Trocar para requerir USDC em lugar de ETH
-        uint256 requiredAmount_ = ITokenRWA(securedAsset).unitValue() / 10 ** ITokenRWA(securedAsset).decimals() * quantity_;
-        require(msg.value >= requiredAmount_, "Insufficient ETH to hire insurance");
+        // Calculate the required amount for insurance payment
+        uint256 requiredAmount_ = tokenRWAInfo.unitValue * quantity_ / 10 ** tokenRWAInfo.decimals;
+
+        // Validate USDC amount
+        require(IERC20(transferTokenAddress).balanceOf(msg.sender) == requiredAmount_, "Insufficient USDC to hire insurance");
         // TODO: check for possible maximum amount per user
-
-        // Transferir pra uma multisig wallet (ou seja alguma wallet que possamos controlar) a quantidade de Precatorio105 que o cliente compro
-         // TODO: Refactor to send tokens through CCIP sendTokens
-        // SendMessageCCIP(jasjsajasjas)
 
         // Mint TokenInsurance desired amount of tokens to msg.sender
         _mint(msg.sender, quantity_);
 
-        ////////////////////////////////////////////////////////////
-        // TODO: Refactor to send CCIP message
-        // Allow TokenInsurance to spend TokenRWA balance in its behalf
-        ITokenRWA(securedAsset).allowSpendTokens(address(this), quantity_);
+        // Make CCIP call sending USDC from msg.sender and making a contract call
+        bytes memory data = abi.encodeWithSignature(
+            "addHiredInsurance(address,address,uint256,uint256)",
+            securedAsset,
+            msg.sender,
+            quantity_,
+            requiredAmount_
+        );
+        sendMethodCallWithUSDC(requiredAmount_, data);
 
-        // TODO: This call will be in vault logic
-        // Transfer TokenRWA amount of tokens to vault
-        IERC20(securedAsset).safeTransferFrom(securedAsset, vault, quantity_);
-
-        // Cadastar registro no vault
-        IVault(vault).addHiredInsurance(securedAsset, msg.sender, quantity_, requiredAmount_);
-
-        // FIXME: This code will be replaced by a USDC token transfer to Vault through CCIP
-        // Pay insurance to vault
-        payable(vault).transfer(requiredAmount_);
-
-        // Calculate excess amount
-        uint256 excessAmount = msg.value - requiredAmount_;
-        if (excessAmount > 0) {
-            payable(msg.sender).transfer(excessAmount);
-        }
-        //////////////////////////////////////////////////////////////////////
+        emit InsuranceHired(msg.sender, address(this), requiredAmount_);
     }
 
     function isDueDateArrived() internal view returns (bool) {
-        return block.timestamp >= ITokenRWA(securedAsset).dueDate();
+        return block.timestamp >= tokenRWAInfo.dueDate;
     }
 
     function checkUpkeep(bytes calldata /* checkData */) public view override returns (bool upkeepNeeded, bytes memory performData) {
@@ -125,13 +132,27 @@ contract TokenInsurance is
     function performUpkeep(bytes calldata /* performData */) external override {
         (bool upkeepNeeded, ) = this.checkUpkeep(abi.encode(""));
         require(upkeepNeeded, "RWA asset was not yet liquidated or already executed");
-        sendGetLiquidationRequest(securedAsset, ITokenRWA(securedAsset).symbol());
+        sendGetLiquidationRequest(securedAsset, tokenRWAInfo.symbol);
         alreadyExecuted = true;
     }
 
     function callVaultHandleRWAPayment() internal override {
-        // TODO: CCIP call
+        // IVault(vault).handleRWAPayment(liquidationResponse, securedAsset);
         bool liquidationResponse = s_settled;
-        IVault(vault).handleRWAPayment(liquidationResponse, securedAsset);
+        bytes memory data = abi.encodeWithSignature(
+            "handleRWAPayment(bool,address,uint256)",
+            liquidationResponse,
+            securedAsset,
+            prime
+        );
+        sendMethodCallWithUSDC(0, data);
+    }
+
+    function approve(address _transferTokenAddress, address _router, uint256 _amount) internal override {
+        IERC20(_transferTokenAddress).approve(address(_router), _amount);
+    }
+
+    function updateTokenRWADetails(TokenRWAInfo calldata rwa) external onlyRole(ADMIN_ROLE) {
+        tokenRWAInfo = rwa;
     }
 }
