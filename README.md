@@ -28,5 +28,5 @@ So check [Automations - Supported networks](https://docs.chain.link/chainlink-au
 ## Compatible networks
 | Network | CCIP Lanes available | CCIP with USDC support| Function | Automation |
 | :---: | :---: | :---: | :---: | :---: | 
-| Polygon Amoy | Optimism Sepolia | x | x | x |
+| Polygon Amoy | [Optimism Sepolia, Ethereum Sepolia] | x | x | x |
 
