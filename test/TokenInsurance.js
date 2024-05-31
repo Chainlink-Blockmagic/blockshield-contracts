@@ -45,70 +45,46 @@ describe("TokenInsurance", function () {
     describe('error scenarios', async () => {
       it("Should revert if routerFunctions_ address is zero", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("", "PRECATORIO105", ZERO_ADDRESS, ZERO_ADDRESS, 0, ZERO_ADDRESS, ZERO_ADDRESS))
+        await expect(TokenInsurance.deploy("", "PRECATORIO105", 0, ZERO_ADDRESS, ZERO_ADDRESS))
         .to.be.revertedWith("Function: router_ cannot be zero");
       });
       it("Should revert if routerCCIP_ address is zero", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("", "PRECATORIO105", ZERO_ADDRESS, ZERO_ADDRESS, 0, ROUTER_FUNCTIONS_ID_AMOY, ZERO_ADDRESS))
+        await expect(TokenInsurance.deploy("", "PRECATORIO105", 0, ROUTER_FUNCTIONS_ID_AMOY, ZERO_ADDRESS))
         .to.be.revertedWithCustomError(TokenInsurance, "ZeroAddress")
       });
       it("Should revert if name is empty", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("", "PRECATORIO105", ZERO_ADDRESS, ZERO_ADDRESS, 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
+        await expect(TokenInsurance.deploy("", "PRECATORIO105", 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
         .to.be.revertedWith("Name cannot be empty");
       });
       it("Should revert if symbol is empty", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "", ZERO_ADDRESS, ZERO_ADDRESS, 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
+        await expect(TokenInsurance.deploy("Precatorio 105", "", 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
         .to.be.revertedWith("Symbol cannot be empty");
       });
       it("Should revert if symbol is less than 3 characters", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "PRE", ZERO_ADDRESS, ZERO_ADDRESS, 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
+        await expect(TokenInsurance.deploy("Precatorio 105", "PRE", 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
         .to.be.revertedWith("Symbol min length is 3");
       });
-      it("Should revert if securedAsset_ address is zero address", async () => {
-        const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", ZERO_ADDRESS, ZERO_ADDRESS, 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
-        .to.be.revertedWithCustomError(TokenInsurance, "ZeroAddress")
-      });
-      it("Should revert if vault address is zero address", async () => {
-        const [protocolAdmin] = await ethers.getSigners();
-        const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", protocolAdmin.address, ZERO_ADDRESS, 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
-        .to.be.revertedWithCustomError(TokenInsurance, "ZeroAddress")
-      });
       it("Should revert if prime is zero", async () => {
-        const [protocolAdmin] = await ethers.getSigners();
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", protocolAdmin.address, protocolAdmin.address, 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
+        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
         .to.be.revertedWith("Invalid prime percentage");
       });
       it("Should revert if prime is greater than MAX_PERCENTAGE (1)", async () => {
-        const [protocolAdmin] = await ethers.getSigners();
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", protocolAdmin.address, protocolAdmin.address, parseEther("1.01"), ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
+        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", parseEther("1.01"), ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
         .to.be.revertedWith("Invalid prime percentage");
       });
       it("Should revert if prime is less than MIN_PERCENTAGE (0.01)", async () => {
-        const [protocolAdmin] = await ethers.getSigners();
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", protocolAdmin.address, protocolAdmin.address, parseEther("0.009"), ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
+        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", parseEther("0.009"), ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
         .to.be.revertedWith("Invalid prime percentage");
       });
     });
     describe('success scenarios', async () => {
-      it("Should assign vault correctly ", async () => {
-        const { vaultContractAddress, tokenInsuranceContractAddress } = await loadFixture(deployProtocol);
-        const tokenInsuranceContract = await ethers.getContractAt(contracts.MOCK_TOKEN_INSURANCE, tokenInsuranceContractAddress);
-        expect(await tokenInsuranceContract.vault()).to.equal(vaultContractAddress);
-      });
-      it("Should assign TokenRWA address to secured asset correctly ", async () => {
-        const { tokenRWAContractAddress, tokenInsuranceContractAddress } = await loadFixture(deployProtocol);
-        const tokenInsuranceContract = await ethers.getContractAt(contracts.MOCK_TOKEN_INSURANCE, tokenInsuranceContractAddress);
-        expect(await tokenInsuranceContract.securedAsset()).to.equal(tokenRWAContractAddress);
-      });
       it("Should assign prime correctly", async () => {
         const { tokenInsuranceContractAddress } = await loadFixture(deployProtocol);
         const tokenInsuranceContract = await ethers.getContractAt(contracts.MOCK_TOKEN_INSURANCE, tokenInsuranceContractAddress);
@@ -136,9 +112,21 @@ describe("TokenInsurance", function () {
         await expect(tokenInsuranceContract.hireInsurance(0))
         .to.be.revertedWithCustomError(TokenInsurance, "ZeroAddress")
       });
-      it("Should revert if tokenRWAInfo is not set yet", async () => {
+      it("Should revert if vault is not set yet", async () => {
         const { tokenInsuranceContractAddress, mockUSDCContractAddress } = await loadFixture(deployProtocol);
         const tokenInsuranceContract = await ethers.getContractAt(contracts.MOCK_TOKEN_INSURANCE, tokenInsuranceContractAddress);
+        await tokenInsuranceContract.updateSenderCrossChainProperties(
+          SOURCE_CHAIN_CCIP_DETAILS.destinationChainSelector,
+          SOURCE_CHAIN_CCIP_DETAILS.linkAddress,
+          mockUSDCContractAddress
+        );
+        await expect(tokenInsuranceContract.hireInsurance(0))
+        .to.be.revertedWith("vault is not set yet");
+      });
+      it("Should revert if tokenRWAInfo is not set yet", async () => {
+        const { tokenInsuranceContractAddress, mockUSDCContractAddress, vaultContractAddress } = await loadFixture(deployProtocol);
+        const tokenInsuranceContract = await ethers.getContractAt(contracts.MOCK_TOKEN_INSURANCE, tokenInsuranceContractAddress);
+        await tokenInsuranceContract.setVault(vaultContractAddress);
         await tokenInsuranceContract.updateSenderCrossChainProperties(
           SOURCE_CHAIN_CCIP_DETAILS.destinationChainSelector,
           SOURCE_CHAIN_CCIP_DETAILS.linkAddress,
@@ -328,7 +316,7 @@ describe("TokenInsurance", function () {
     const tokenRWAContractAddress = await deployTokenRWA();
     const vaultContractAddress = await deployVault();
     const mockUSDCContractAddress = await deployMockUsdc();
-    const tokenInsuranceContractAddress = await deployTokenInsurance({ vaultAddress: vaultContractAddress, tokenRWAaddress: tokenRWAContractAddress });
+    const tokenInsuranceContractAddress = await deployTokenInsurance({ vaultAddress: vaultContractAddress });
 
     expect(tokenInsuranceContractAddress).to.not.equal(ZERO_ADDRESS);
     expect(vaultContractAddress).to.not.equal(ZERO_ADDRESS);
@@ -377,6 +365,7 @@ describe("TokenInsurance", function () {
       tokenRWAContract.symbol(),
     ]);
     const tokenRWAInfo = {
+      securedAsset: tokenRWAContractAddress,
       totalSupply,
       unitValue,
       decimals,
@@ -386,6 +375,9 @@ describe("TokenInsurance", function () {
     };
     const tx_updateTokenRWADetails = await tokenInsuranceContract.updateTokenRWADetails(tokenRWAInfo);
     await tx_updateTokenRWADetails.wait();
+
+    const tx_setVault = await tokenInsuranceContract.setVault(vaultContractAddress);
+    await tx_setVault.wait();
 
     return {
       protocolAdmin,
@@ -423,19 +415,17 @@ describe("TokenInsurance", function () {
     return vaultContractAddress;
   };
 
-  const deployTokenInsurance = async ({ vaultAddress, tokenRWAaddress }) => {
+  const deployTokenInsurance = async ({ vaultAddress }) => {
     console.log(" --- Deploying Token Insurance contract --- ");
     const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
     const insurance = {
       name: "Precatorio 105",
       symbol: "blockshield.PRECATORIO105",
-      securedAsset: tokenRWAaddress,
-      vault: vaultAddress,
       prime: parseEther("0.05"), // 5% prime
       routerFunctions: ROUTER_FUNCTIONS_ID_AMOY,
       routerCCIP: ROUTER_CCIP_ID_AMOY,
     }
-    const tokenInsuranceContract = await TokenInsurance.deploy(insurance.name, insurance.symbol, insurance.securedAsset, insurance.vault, insurance.prime, insurance.routerFunctions, insurance.routerCCIP);
+    const tokenInsuranceContract = await TokenInsurance.deploy(insurance.name, insurance.symbol, insurance.prime, insurance.routerFunctions, insurance.routerCCIP);
     const tokenInsuranceContractAddress = await tokenInsuranceContract.getAddress();
     console.log(`TokenInsurance address: ${tokenInsuranceContractAddress}`);
     return tokenInsuranceContractAddress;
@@ -455,7 +445,6 @@ describe("TokenInsurance", function () {
     const tx_mint = await mockUSDCContract.mint(address, amount);
     await tx_mint.wait();
   };
-
   const tokenInsuranceFunctionSetup = async ({ tokenInsuranceContract }) => {
     // Functions setup
     const tx = await tokenInsuranceContract.updateRequest(
