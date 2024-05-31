@@ -16,7 +16,7 @@ const {
   Location,
   CodeLanguage,
 } = require("@chainlink/functions-toolkit");
-const { abi: RWA_LIQUIDATION_Abi } = require("../artifacts/contracts/RWALiquidationFunctionWithUpdateRequest.sol/RWALiquidationFunctionWithUpdateRequest.json");
+const { abi: RWA_LIQUIDATION_Abi } = require("../artifacts/contracts/TokenInsurance.sol/TokenInsurance.json");
 const ethers = require("ethers");
 const { BigNumber } = require('bignumber.js');
 

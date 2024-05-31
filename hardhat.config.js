@@ -28,12 +28,12 @@ module.exports = {
   settings: {
     optimizer: {
       enabled: true,
-      runs: 200,
-      details: {
-        yul: true
-      }
+      runs: 5,
+      // details: {
+      //   yul: true
+      // }
     },
-    viaIR : false,
+    // viaIR : false,
   },
   etherscan: {
     apiKey: process.env.POLYGONSCAN_API_KEY

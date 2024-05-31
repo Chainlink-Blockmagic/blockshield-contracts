@@ -2,34 +2,28 @@
 pragma solidity ^0.8.24;
 
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
-import {IERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
 import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
 import {LinkTokenInterface} from "@chainlink/contracts/src/v0.8/shared/interfaces/LinkTokenInterface.sol";
-
-interface Sender {
-    function send(uint256 _amount) external returns (bytes32);
-}
 
 /// @title BlockshieldMessageSender
 /// @notice Send EVM2AnyMessage CrossChain using CCIP protocol
 /// @dev https://docs.chain.link/ccip/supported-networks
-contract BlockshieldMessageSender is Sender {
+abstract contract BlockshieldMessageSender {
     /// @dev Contract variables
     IRouterClient public router;
     LinkTokenInterface public linkToken;
-    
-    address public owner;
+
+    address public blockshieldOwner;
     uint64 public destinationChainSelector;
-    address public destinationReceiver;
     address public linkAddress;
     address public transferTokenAddress;
     address public routerAddress;
     
     /// @dev Custom errors to provide more descriptive revert messages
     /// @dev Used to make sure contract has enough balance to cover the fees
-    error NotEnoughBalance(uint256 currentBalance, uint256 calculatedFees); 
-    /// @dev Used when trying to withdraw but there's nothing to withdraw
-    error NothingToWithdraw();
+    error NotEnoughBalance(uint256 currentBalance, uint256 calculatedFees);
+    /// @dev Revert if address parameter is zero
+    error ZeroAddress();
 
     /// @dev Events to emit onchain
     event MessageSent(
@@ -43,18 +37,29 @@ contract BlockshieldMessageSender is Sender {
     );
 
     /// @dev OnlyOwner modifier function
-    modifier onlyOwner() {
-        require(msg.sender == owner);
+    modifier onlyBlockshieldOwner() {
+        require(msg.sender == blockshieldOwner);
         _;
     }
 
-    constructor() {
-        owner = msg.sender;
+    /// @param _routerAddress The router address for the sender chain 
+    constructor(address _routerAddress) {
+        if (_routerAddress == address(0)) revert ZeroAddress();
+        blockshieldOwner = msg.sender;
+        routerAddress = _routerAddress;
+        router = IRouterClient(routerAddress);
     }
 
     /// @dev Send cross-chain message
+    /// @param _destinationReceiverAddress The destination address of the contract receiving the message
     /// @param _amount The amount to send on message
-    function send(uint256 _amount) override external returns (bytes32) {
+    /// @param _data The encodedWithSignature method and their parameters
+    function sendMethodCallWithUSDC(
+        address _destinationReceiverAddress, 
+        uint256 _amount, 
+        bytes memory _data
+    ) internal virtual returns (bytes32) {
+        if (_destinationReceiverAddress == address(0)) revert ZeroAddress();
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         Client.EVMTokenAmount memory tokenAmount = Client.EVMTokenAmount({
             token: transferTokenAddress,
@@ -63,12 +68,8 @@ contract BlockshieldMessageSender is Sender {
         tokenAmounts[0] = tokenAmount;
 
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
-            receiver: abi.encode(destinationReceiver),
-            data: abi.encodeWithSignature(
-                "insure(address,uint256)",
-                address(0),
-                _amount
-            ),
+            receiver: abi.encode(_destinationReceiverAddress),
+            data: _data,
             tokenAmounts: tokenAmounts,
             extraArgs: Client._argsToBytes(
                 Client.EVMExtraArgsV1({ gasLimit: 980_000 })
@@ -82,14 +83,15 @@ contract BlockshieldMessageSender is Sender {
             revert NotEnoughBalance(linkToken.balanceOf(address(this)), fees);
         
         linkToken.approve(routerAddress, fees);
-        IERC20(transferTokenAddress).approve(address(router), _amount);
+
+        approve(transferTokenAddress, address(router), _amount);
 
         bytes32 messageId = router.ccipSend(destinationChainSelector, message);
         
         emit MessageSent(
             messageId,
             destinationChainSelector,
-            destinationReceiver,
+            _destinationReceiverAddress,
             transferTokenAddress,
             _amount,
             address(linkToken),
@@ -101,26 +103,17 @@ contract BlockshieldMessageSender is Sender {
 
     /// @dev Configure the destination chain properties
     /// @param _destinationChainSelector  The destination chain selector
-    /// @param _destinationReceiverAddress The destination receiver address
-    /// @param _routerAddress The router address for the sender chain 
     /// @param _linkAddress The link token on the sender chain
     /// @param _transferTokenAddress The token that will be sent on message
     function updateSenderCrossChainProperties(
         uint64 _destinationChainSelector,
-        address _destinationReceiverAddress,
-        address _routerAddress,
         address _linkAddress,
         address _transferTokenAddress
-    ) external onlyOwner {
+    ) external onlyBlockshieldOwner {
         destinationChainSelector = _destinationChainSelector;
-        routerAddress = _routerAddress;
         linkAddress = _linkAddress;
         transferTokenAddress = _transferTokenAddress;
-
-        router = IRouterClient(routerAddress);
         linkToken = LinkTokenInterface(linkAddress);
-        
-        destinationReceiver = _destinationReceiverAddress;
     }
 
     /// @dev Retrieve LINK balance of an account
@@ -129,6 +122,5 @@ contract BlockshieldMessageSender is Sender {
         return linkToken.balanceOf(account);
     }
 
-    /// @dev Accepts ETH transfers
-    receive() external payable {}
+    function approve(address _transferTokenAddress, address _router, uint256 _amount) internal virtual;
 }
