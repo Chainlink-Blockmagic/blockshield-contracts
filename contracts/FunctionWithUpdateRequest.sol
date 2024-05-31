@@ -32,8 +32,8 @@ abstract contract FunctionWithUpdateRequest is
     event ApiRequest(bytes32 indexed requestId, address indexed tokenRWA, string symbol);
 
     constructor(address router_, address sender_) FunctionsClient(router_) ConfirmedOwner(sender_) {
-        require(router_ != address(0), "router_ cannot be zero");
-        require(sender_ != address(0), "sender_ cannot be zero");
+        require(router_ != address(0), "Function: router_ cannot be zero");
+        require(sender_ != address(0), "Function: sender_ cannot be zero");
     }
 
     function sendGetLiquidationRequest(address tokenRWA, string memory symbol) public {
