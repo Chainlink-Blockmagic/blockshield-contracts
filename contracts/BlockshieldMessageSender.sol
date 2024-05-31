@@ -45,13 +45,27 @@ contract BlockshieldMessageSender {
         _;
     }
 
-    constructor() {
+    constructor(uint64 _destinationChainSelector,
+        address _destinationReceiverAddress,
+        address _routerAddress,
+        address _linkAddress,
+        address _transferTokenAddress) 
+    {
         owner = msg.sender;
+        destinationChainSelector = _destinationChainSelector;
+        routerAddress = _routerAddress;
+        linkAddress = _linkAddress;
+        transferTokenAddress = _transferTokenAddress;
+
+        router = IRouterClient(routerAddress);
+        linkToken = LinkTokenInterface(linkAddress);
+        
+        destinationReceiver = _destinationReceiverAddress;
     }
 
     /// @dev Send cross-chain message
     /// @param _amount The amount to send on message
-    function send(uint256 _amount, bytes calldata data) external returns (bytes32) {
+    function SendMethodCallWithUSDC(uint256 _amount, bytes calldata data) external returns (bytes32) {
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         Client.EVMTokenAmount memory tokenAmount = Client.EVMTokenAmount({
             token: transferTokenAddress,

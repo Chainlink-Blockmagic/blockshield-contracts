@@ -21,9 +21,10 @@ abstract contract VaultMessageReceiver is CCIPReceiver {
         uint256 tokenAmount // The token amount that was transferred.
     );
 
-    bytes32 private s_lastReceivedMessageId; // Store the last received messageId.
+    bytes32 private s_lastReceivedMessageId;    // Store the last received messageId.
     address private s_lastReceivedTokenAddress; // Store the last received token address.
-    uint256 private s_lastReceivedTokenAmount; // Store the last received amount.
+    uint256 private s_lastReceivedTokenAmount;  // Store the last received amount.
+    bytes32 private s_lastReceivedData;         // Store the last received data.
 
     address public vault;
 
@@ -39,31 +40,25 @@ abstract contract VaultMessageReceiver is CCIPReceiver {
 
         s_lastReceivedTokenAddress = message.destTokenAmounts[0].token;
         s_lastReceivedTokenAmount = message.destTokenAmounts[0].amount;
-        // param 1
-        // param 1
-        // param 1
-        // param 1
+        s_lastReceivedData = message.data;
 
         if (success) {
             emit MessageReceived(
                 s_lastReceivedMessageId,
                 abi.decode(message.sender, (address)),
                 s_lastReceivedTokenAddress,
-                s_lastReceivedTokenAmount
+                s_lastReceivedTokenAmount,
+                s_lastReceivedData
             );
         } else {
             emit InsureCallErrorEvent(
                 s_lastReceivedMessageId,
                 abi.decode(message.sender, (address)),
                 s_lastReceivedTokenAddress,
-                s_lastReceivedTokenAmount
+                s_lastReceivedTokenAmount,
+                s_lastReceivedData
             );
             revert();
         }
-    }
-
-    function insure(address _account, uint256 _amount) external {
-        // TODO: Add the business logic to be possible insure successfully
-        emit InsureEvent(_account, _amount);
-    }
+    }  
 }
