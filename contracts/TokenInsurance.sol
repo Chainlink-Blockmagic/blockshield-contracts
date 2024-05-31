@@ -100,7 +100,7 @@ contract TokenInsurance is
         require(tokenRWAInfo.isSet, "tokenRWAInfo is not set yet");
         require(quantity_ > 0, "Invalid quantity");
         require(quantity_ <= tokenRWAInfo.totalSupply, "Quantity is greater than supply");
-        require(totalSupply() + quantity_ <= tokenRWAInfo.totalSupply, "Too high quantity");
+        require(totalSupply() + quantity_ <= tokenRWAInfo.totalSupply, "Not suficient insurance in stock");
 
         // Calculate the required amount for insurance payment
         uint256 requiredAmount_ = getRwaTotalValue(quantity_);
@@ -180,7 +180,7 @@ contract TokenInsurance is
         return (totalValue, insuranceTotalCost);
     }
 
-    function getRwaTotalValue(uint256 quantity) internal view returns (uint256 totalValue) {
+    function getRwaTotalValue(uint256 quantity) public view returns (uint256 totalValue) {
         totalValue = tokenRWAInfo.unitValue * quantity / 10 ** tokenRWAInfo.decimals;
     }
 
