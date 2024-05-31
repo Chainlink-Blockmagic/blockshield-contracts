@@ -25,24 +25,20 @@ abstract contract VaultMessageReceiver is CCIPReceiver {
     address private s_lastReceivedTokenAddress; // Store the last received token address.
     uint256 private s_lastReceivedTokenAmount; // Store the last received amount.
 
-    address public vault;
+    // address public contractAddress;
 
-    constructor(address _router, address vault_) CCIPReceiver(_router) {
-        vault = vault_;
+    constructor(address _router/*, address contractAddress_*/) CCIPReceiver(_router) {
+        // contractAddress = contractAddress_;
     }
 
     function _ccipReceive(Client.Any2EVMMessage memory message) internal override {
         s_lastReceivedMessageId = message.messageId;
 
-        // (bool success, ) = address(this).call(message.data);
-        (bool success, ) = vault.call(message.data);
+        // (bool success, ) = contractAddress.call(message.data);
+        (bool success, ) = address(this).call(message.data);
 
         s_lastReceivedTokenAddress = message.destTokenAmounts[0].token;
         s_lastReceivedTokenAmount = message.destTokenAmounts[0].amount;
-        // param 1
-        // param 1
-        // param 1
-        // param 1
 
         if (success) {
             emit MessageReceived(
