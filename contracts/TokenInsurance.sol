@@ -39,9 +39,6 @@ contract TokenInsurance is
     /// @notice Vault is the contract who holds the RWAs tokens and waits liquidation
     address public vault;
 
-    /// @notice Is the token related to the warranty
-    address public securedAsset;
-    
     /// @notice Prime represent the value of the inssurance. It is a percentage applied to the value of the RWA
     uint256 public prime;
 
@@ -51,8 +48,10 @@ contract TokenInsurance is
     /// @notice Clients who bought insurance
     address[] insuranceClients;
 
+    /// @notice Is the token related to the warranty
     TokenRWAInfo public tokenRWAInfo;
     struct TokenRWAInfo {
+        address securedAsset;
         uint256 totalSupply;
         uint256 unitValue;
         uint256 decimals;
@@ -70,8 +69,6 @@ contract TokenInsurance is
     constructor(
         string memory name_,
         string memory symbol_,
-        address securedAsset_,
-        address vault_,
         uint256 prime_,
         address routerFunctions_,
         address routerCCIP_
@@ -84,12 +81,8 @@ contract TokenInsurance is
         require(bytes(name_).length > 0, "Name cannot be empty");
         require(bytes(symbol_).length > 0, "Symbol cannot be empty");
         require(bytes(symbol_).length > 3, "Symbol min length is 3");
-        if (securedAsset_ == address(0)) revert ZeroAddress();
-        if (vault_ == address(0)) revert ZeroAddress();
         require(prime_.checkPercentageThreshold(), "Invalid prime percentage");
 
-        vault = vault_;
-        securedAsset = securedAsset_;
         prime = prime_;
 
         // _grantRole(ADMIN_ROLE, msg.sender);
@@ -98,6 +91,7 @@ contract TokenInsurance is
 
     function hireInsurance(uint256 quantity_) external nonReentrant {
         if (transferTokenAddress == address(0)) revert ZeroAddress();
+        require(vault != address(0), "vault is not set yet");
         require(tokenRWAInfo.isSet, "tokenRWAInfo is not set yet");
         require(quantity_ > 0, "Invalid quantity");
         require(quantity_ <= tokenRWAInfo.totalSupply, "Quantity is greater than supply");
@@ -113,7 +107,7 @@ contract TokenInsurance is
         // Make CCIP call sending USDC from msg.sender and making a contract call
         bytes memory data = abi.encodeWithSignature(
             "addHiredInsurance(address,address,address,uint256,uint256)",
-            securedAsset,
+            tokenRWAInfo.securedAsset,
             address(this),
             msg.sender,
             quantity_,
@@ -140,9 +134,9 @@ contract TokenInsurance is
     function performUpkeep(bytes calldata /* performData */) external override {
         (bool upkeepNeeded, ) = this.checkUpkeep(abi.encode(""));
         require(upkeepNeeded, "checkUpkeep not met");
-        sendGetLiquidationRequest(securedAsset, tokenRWAInfo.symbol);
+        sendGetLiquidationRequest(tokenRWAInfo.securedAsset, tokenRWAInfo.symbol);
         alreadyExecuted = true;
-        emit PerformUpkeep(securedAsset, address(this));
+        emit PerformUpkeep(tokenRWAInfo.securedAsset, address(this));
     }
 
     function callVaultHandleRWAPayment() internal override {
@@ -150,14 +144,15 @@ contract TokenInsurance is
         bytes memory data = abi.encodeWithSignature(
             "handleRWAPayment(bool,address,uint256)",
             liquidationResponse,
-            securedAsset,
+            tokenRWAInfo.securedAsset,
             prime
         );
         bytes32 messageId = sendMethodCallWithUSDC(vault, 0, data);
-        emit HandlePayment(messageId, securedAsset, liquidationResponse);
+        emit HandlePayment(messageId, tokenRWAInfo.securedAsset, liquidationResponse);
     }
 
     function updateTokenRWADetails(TokenRWAInfo calldata rwa) external onlyOwner {
+        if (rwa.securedAsset == address(0)) revert ZeroAddress();
         tokenRWAInfo = rwa;
     }
 
@@ -194,7 +189,7 @@ contract TokenInsurance is
 
     function setSecuredAsset(address securedAsset_) external onlyOwner {
         if (securedAsset_ != address(0)) {
-            securedAsset = securedAsset_;
+            tokenRWAInfo.securedAsset = securedAsset_;
         }
     }
 
