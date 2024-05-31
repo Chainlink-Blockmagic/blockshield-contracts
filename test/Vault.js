@@ -18,6 +18,7 @@ const TEN_THOUSAND = parseEther("10000");
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const AGGREGATOR_NETWORK_SEPOLIA = "0x694AA1769357215DE4FAC081bf1f309aDC325306";
 const ROUTER_ID_AMOY = "0xC22a79eBA640940ABB6dF0f7982cc119578E11De";
+const ROUTER_CCIP_ID_AMOY = "0x9C32fCB86BF0f4a1A8921a9Fe46de3198bb884B2";
 
 describe("Vault", function () {
 
@@ -174,7 +175,7 @@ describe("Vault", function () {
     return vaultContractAddress;
   };
 
-  const deployTokenInsurance = async ({ vaultAddress, tokenRWAaddress, rwaLiquidationContractAddress }) => {
+  const deployTokenInsurance = async ({ vaultAddress, tokenRWAaddress }) => {
     console.log(" --- Deploying Token Insurance contract --- ");
     const TokenInsurance = await ethers.getContractFactory(contracts.TOKEN_INSURANCE);
     const insurance = {
@@ -183,9 +184,10 @@ describe("Vault", function () {
       securedAsset: tokenRWAaddress,
       vault: vaultAddress,
       prime: parseEther("0.05"), // 5% prime
-      router: ROUTER_ID_AMOY
+      router: ROUTER_ID_AMOY,
+      routerCCIP: ROUTER_CCIP_ID_AMOY
     }
-    const tokenInsuranceContract = await TokenInsurance.deploy(insurance.name, insurance.symbol, insurance.securedAsset, insurance.vault, insurance.prime, insurance.router);
+    const tokenInsuranceContract = await TokenInsurance.deploy(insurance.name, insurance.symbol, insurance.securedAsset, insurance.vault, insurance.prime, insurance.routerFunctions, insurance.routerCCIP);
     const tokenInsuranceContractAddress = await tokenInsuranceContract.getAddress();
     console.log(`TokenInsurance address: ${tokenInsuranceContractAddress}`);
     return tokenInsuranceContractAddress;
