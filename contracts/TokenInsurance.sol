@@ -64,6 +64,7 @@ contract TokenInsurance is
     event InsuranceHired(bytes32 indexed messageId, address indexed sender, address insurance, uint256 amount);
     event HandlePayment(bytes32 indexed messageId, address indexed securedAsset, bool liquidationResponse);
     event UserPayment(address indexed inusrance, address indexed client, uint256 paymentValue, uint256 totalValue, uint256 insuranceTotalCost);
+    event PerformUpkeep(address indexed securedAsset, address indexed insurance);
 
     /// @notice It will mint the total supply of the RWA secured asset to the contract itself
     constructor(
@@ -141,6 +142,7 @@ contract TokenInsurance is
         require(upkeepNeeded, "checkUpkeep not met");
         sendGetLiquidationRequest(securedAsset, tokenRWAInfo.symbol);
         alreadyExecuted = true;
+        emit PerformUpkeep(securedAsset, address(this));
     }
 
     function callVaultHandleRWAPayment() internal override {

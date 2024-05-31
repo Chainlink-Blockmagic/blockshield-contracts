@@ -36,7 +36,10 @@ abstract contract FunctionWithUpdateRequest is
         require(sender_ != address(0), "Function: sender_ cannot be zero");
     }
 
-    function sendGetLiquidationRequest(address tokenRWA, string memory symbol) public {
+    function sendGetLiquidationRequest(
+        address tokenRWA,
+        string memory symbol
+    ) public virtual {
         try
             i_router.sendRequest(
                 subscriptionId,

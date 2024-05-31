@@ -24,4 +24,9 @@ contract MockTokenInsurance is TokenInsurance {
     ) internal pure override returns (bytes32) {
       return keccak256(abi.encodePacked(""));
     }
+
+    function sendGetLiquidationRequest(
+        address tokenRWA,
+        string memory symbol
+    ) public override pure {}
 }
