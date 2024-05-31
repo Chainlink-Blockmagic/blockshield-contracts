@@ -28,5 +28,22 @@ So check [Automations - Supported networks](https://docs.chain.link/chainlink-au
 ## Compatible networks
 | Network | CCIP Lanes available | CCIP with USDC support| Function | Automation |
 | :---: | :---: | :---: | :---: | :---: | 
+| Polygon Amoy | Avalanche Fuji | x | x | x |
+| Polygon Amoy | Arbitrum Sepolia  | x | x | x |
 | Polygon Amoy | Optimism Sepolia | x | x | x |
-
+| Polygon Amoy | Ethereum Sepolia | x | x | x |
+| Avalanche Fuji | Arbitrum Sepolia | x | x | x |
+| Avalanche Fuji | Optimism Sepolia | x | x | x |
+| Avalanche Fuji | Polygon Amoy | x | x | x |
+| Avalanche Fuji | Ethereum Sepolia | x | x | x |
+| Arbitrum Sepolia | Avalanche Fuji | x | x | x |
+| Arbitrum Sepolia | Ethereum Sepolia | x | x | x |
+| Arbitrum Sepolia | Optimism Sepolia | x | x | x |
+| Optimism Sepolia | Avalanche Fuji | x | x | x |
+| Optimism Sepolia | Ethereum Sepolia | x | x | x |
+| Optimism Sepolia | Arbitrum Sepolia | x | x | x |
+| Optimism Sepolia | Polygon Amoy | x | x | x |
+| Ethereum Sepolia | Avalanche Fuji | x | x | x |
+| Ethereum Sepolia | Arbitrum Sepolia | x | x | x |
+| Ethereum Sepolia | Optimism Sepolia | x | x | x |
+| Ethereum Sepolia | Polygon Amoy | x | x | x |
