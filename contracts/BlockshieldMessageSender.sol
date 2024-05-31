@@ -51,8 +51,8 @@ abstract contract BlockshieldMessageSender {
 
     /// @dev Send cross-chain message
     /// @param _amount The amount to send on message
-    /// @param data The method signature plus parameters encoded
-    function sendMethodCallWithUSDC(uint256 _amount, bytes memory data) public returns (bytes32) {
+    /// @param _data The encodedWithSignature method and their parameters
+    function sendMethodCallWithUSDC(uint256 _amount, bytes memory _data) public returns (bytes32) {
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         Client.EVMTokenAmount memory tokenAmount = Client.EVMTokenAmount({
             token: transferTokenAddress,
@@ -62,7 +62,7 @@ abstract contract BlockshieldMessageSender {
 
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(destinationReceiver),
-            data: data,
+            data: _data,
             tokenAmounts: tokenAmounts,
             extraArgs: Client._argsToBytes(
                 Client.EVMExtraArgsV1({ gasLimit: 980_000 })
