@@ -54,7 +54,6 @@ abstract contract FunctionWithUpdateRequest is
         } catch (bytes memory data) {
             emit RequestRevertedWithoutErrorMsg(data);
         }
-
     }
 
     /// @notice Update the request settings
