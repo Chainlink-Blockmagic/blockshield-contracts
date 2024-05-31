@@ -58,7 +58,7 @@ abstract contract BlockshieldMessageSender {
         address _destinationReceiverAddress, 
         uint256 _amount, 
         bytes memory _data
-    ) internal returns (bytes32) {
+    ) internal virtual returns (bytes32) {
         if (_destinationReceiverAddress == address(0)) revert ZeroAddress();
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         Client.EVMTokenAmount memory tokenAmount = Client.EVMTokenAmount({
