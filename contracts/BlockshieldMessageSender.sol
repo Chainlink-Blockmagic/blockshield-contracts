@@ -15,16 +15,15 @@ abstract contract BlockshieldMessageSender {
 
     address public blockshieldOwner;
     uint64 public destinationChainSelector;
-    address public destinationReceiver;
     address public linkAddress;
     address public transferTokenAddress;
     address public routerAddress;
     
     /// @dev Custom errors to provide more descriptive revert messages
     /// @dev Used to make sure contract has enough balance to cover the fees
-    error NotEnoughBalance(uint256 currentBalance, uint256 calculatedFees); 
-    /// @dev Used when trying to withdraw but there's nothing to withdraw
-    error NothingToWithdraw();
+    error NotEnoughBalance(uint256 currentBalance, uint256 calculatedFees);
+    /// @dev Revert if address parameter is zero
+    error ZeroAddress();
 
     /// @dev Events to emit onchain
     event MessageSent(
@@ -45,14 +44,22 @@ abstract contract BlockshieldMessageSender {
 
     /// @param _routerAddress The router address for the sender chain 
     constructor(address _routerAddress) {
+        if (_routerAddress == address(0)) revert ZeroAddress();
         blockshieldOwner = msg.sender;
         routerAddress = _routerAddress;
+        router = IRouterClient(routerAddress);
     }
 
     /// @dev Send cross-chain message
+    /// @param _destinationReceiverAddress The destination address of the contract receiving the message
     /// @param _amount The amount to send on message
     /// @param _data The encodedWithSignature method and their parameters
-    function sendMethodCallWithUSDC(uint256 _amount, bytes memory _data) public returns (bytes32) {
+    function sendMethodCallWithUSDC(
+        address _destinationReceiverAddress, 
+        uint256 _amount, 
+        bytes memory _data
+    ) internal returns (bytes32) {
+        if (_destinationReceiverAddress == address(0)) revert ZeroAddress();
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         Client.EVMTokenAmount memory tokenAmount = Client.EVMTokenAmount({
             token: transferTokenAddress,
@@ -61,7 +68,7 @@ abstract contract BlockshieldMessageSender {
         tokenAmounts[0] = tokenAmount;
 
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
-            receiver: abi.encode(destinationReceiver),
+            receiver: abi.encode(_destinationReceiverAddress),
             data: _data,
             tokenAmounts: tokenAmounts,
             extraArgs: Client._argsToBytes(
@@ -84,7 +91,7 @@ abstract contract BlockshieldMessageSender {
         emit MessageSent(
             messageId,
             destinationChainSelector,
-            destinationReceiver,
+            _destinationReceiverAddress,
             transferTokenAddress,
             _amount,
             address(linkToken),
@@ -96,23 +103,17 @@ abstract contract BlockshieldMessageSender {
 
     /// @dev Configure the destination chain properties
     /// @param _destinationChainSelector  The destination chain selector
-    /// @param _destinationReceiverAddress The destination receiver address
     /// @param _linkAddress The link token on the sender chain
     /// @param _transferTokenAddress The token that will be sent on message
     function updateSenderCrossChainProperties(
         uint64 _destinationChainSelector,
-        address _destinationReceiverAddress, // ---> VaultMessageReceiver
         address _linkAddress,
-        address _transferTokenAddress // ---> USDC
+        address _transferTokenAddress
     ) external onlyBlockshieldOwner {
         destinationChainSelector = _destinationChainSelector;
         linkAddress = _linkAddress;
         transferTokenAddress = _transferTokenAddress;
-
-        router = IRouterClient(routerAddress);
         linkToken = LinkTokenInterface(linkAddress);
-        
-        destinationReceiver = _destinationReceiverAddress;
     }
 
     /// @dev Retrieve LINK balance of an account
@@ -120,9 +121,6 @@ abstract contract BlockshieldMessageSender {
     function linkBalance(address account) public view returns (uint256) {
         return linkToken.balanceOf(account);
     }
-
-    /// @dev Accepts ETH transfers
-    receive() external payable {}
 
     function approve(address _transferTokenAddress, address _router, uint256 _amount) internal virtual;
 }
