@@ -8,18 +8,21 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/ITokenInsurance.sol";
 import "./interfaces/ITokenRWA.sol";
 import "./BlockshieldMessageSender.sol";
-import "./VaultMessageReceiver.sol";
+import "./BlockshieldMessageReceiver.sol";
 
 contract Vault is
     // AccessControl,
     Ownable,
     BlockshieldMessageSender,
-    VaultMessageReceiver {
+    BlockshieldMessageReceiver {
 
     using SafeERC20 for IERC20;
 
     // /// @dev Access control constants
     // bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+
+    /// @notice Map each secured RWA it correspondant insurance
+    mapping(address => address) public insuranceAddressByRwa;
 
     /// @notice Maps for each secured RWA an owner with insurance details
     /// @dev This structure only allows to have one insurance per client per RWA
@@ -42,24 +45,36 @@ contract Vault is
     event InsurancePaid (address indexed securedAsset_, address indexed insuranceClient_, uint256 quantity_, uint256 securedAmount_, uint256 insuranceCost);
     event RWAYieldPaid (address indexed securedAsset_, address indexed insuranceClient_, uint256 quantity_, uint256 securedAmount_, uint256 insuranceCost);
     event InsuranceHiringAdded(address indexed securedAsset_, address indexed insuranceClient_, uint256 amount);
-    event InsuranceTotalPayment(address indexed securedAsset_, address paymentReceiver, uint256 quantity_);
+    event InsuranceTotalPayment(
+        bytes32 indexed messageId, // The unique ID of the CCIP message
+        address indexed securedAsset_,
+        address paymentReceiver,
+        uint256 quantity_);
 
     constructor(
         address routerCCIP_
     )
         Ownable(msg.sender)
         BlockshieldMessageSender(routerCCIP_)
-        VaultMessageReceiver(routerCCIP_)
+        BlockshieldMessageReceiver(routerCCIP_)
     {
         // _grantRole(ADMIN_ROLE, msg.sender);
     }
 
-    function addHiredInsurance(address securedAsset_, address insuranceClient_, uint256 quantity_, uint256 securedAmount_) external {
+    function addHiredInsurance(
+        address securedAsset_,
+        address insuranceAddress_,
+        address insuranceClient_,
+        uint256 quantity_,
+        uint256 securedAmount_
+    ) external {
         // CHECK
         require(securedAsset_ != address(0), "securedAsset_ cannot be zero address");
+        require(insuranceAddress_ != address(0), "insuranceAddress_ cannot be zero address");
         require(insuranceClient_ != address(0), "insuranceClient_ cannot be zero address");
         require(quantity_ > 0, "quantity_ cannot be zero");
         require(securedAmount_ > 0, "securedAmount_ cannot be zero");
+
         if (!existsInsuranceClient[insuranceClient_]) {
             insuranceOwnersByAsset[securedAsset_].push(insuranceClient_);
             hiredInsurances[securedAsset_][insuranceClient_] = InsuranceDetails({ quantity: quantity_, securedAmount: securedAmount_ });
@@ -68,6 +83,7 @@ contract Vault is
             insuranceDetails.quantity += quantity_;
             insuranceDetails.securedAmount += securedAmount_;
         }
+        insuranceAddressByRwa[securedAsset_] = insuranceAddress_;
         existsInsuranceClient[insuranceClient_] = true;
         amountByAsset[securedAsset_] += securedAmount_;
 
@@ -119,11 +135,20 @@ contract Vault is
             else emit RWAYieldPaid(securedAsset, currentInsuranceOwner, insuranceDetails.quantity, insuranceDetails.securedAmount, insuranceCost);
         }
 
-        sendMethodCallWithUSDC(totalAmount, abi.encode(""));
+        bytes32 messageId = sendMethodCallWithUSDC(
+            insuranceAddressByRwa[securedAsset],
+            totalAmount,
+            abi.encode("")
+        );
 
         // TODO: SEND CCIP CALL TO TOKEN INSURANCE PRA TokenInsurance#selfdestruct()
 
-        emit InsuranceTotalPayment(securedAsset, destinationReceiver, totalAmount);
+        emit InsuranceTotalPayment(
+            messageId, 
+            securedAsset,
+            insuranceAddressByRwa[securedAsset],
+            totalAmount
+        );
     }
 
     function getInsuranceCost(address securedAsset, uint256 insurancePrime, uint256 quantity) internal view returns (uint256 insuranceCost) {
@@ -154,9 +179,6 @@ contract Vault is
     //     require(account != msg.sender, "Vault: Cannot revoke own admin role"); // Prevent self-revocation
     //     _revokeRole(ADMIN_ROLE, account);
     // }
-
-    // Fallback function is called when msg.data is not empty
-    fallback() external payable {}
 
     function approve(address _transferTokenAddress, address _router, uint256 _amount) internal override {
         IERC20(_transferTokenAddress).approve(address(_router), _amount);
