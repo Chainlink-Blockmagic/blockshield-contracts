@@ -416,8 +416,9 @@ describe("TokenInsurance", function () {
       prime: parseEther("0.05"), // 5% prime
       routerFunctions: ROUTER_FUNCTIONS_ID_AMOY,
       routerCCIP: ROUTER_CCIP_ID_AMOY,
+      aggregatorNetwork: AGGREGATOR_NETWORK_POLYGON_AMOY
     }
-    const tokenInsuranceContract = await TokenInsurance.deploy(insurance.name, insurance.symbol, insurance.prime, insurance.routerFunctions, insurance.routerCCIP, AGGREGATOR_NETWORK_POLYGON_AMOY);
+    const tokenInsuranceContract = await TokenInsurance.deploy(insurance.name, insurance.symbol, insurance.prime, insurance.routerFunctions, insurance.routerCCIP, insurance.aggregatorNetwork);
     const tokenInsuranceContractAddress = await tokenInsuranceContract.getAddress();
     console.log(`TokenInsurance address: ${tokenInsuranceContractAddress}`);
     return tokenInsuranceContractAddress;
