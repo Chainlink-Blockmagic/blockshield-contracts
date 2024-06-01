@@ -316,19 +316,11 @@ describe("TokenInsurance", function () {
     const tokenRWAContractAddress = await deployTokenRWA();
     const vaultContractAddress = await deployVault();
     const mockUSDCContractAddress = await deployMockUsdc();
-    const tokenInsuranceContractAddress = await deployTokenInsurance({ vaultAddress: vaultContractAddress });
+    const tokenInsuranceContractAddress = await deployTokenInsurance();
 
     expect(tokenInsuranceContractAddress).to.not.equal(ZERO_ADDRESS);
     expect(vaultContractAddress).to.not.equal(ZERO_ADDRESS);
     expect(tokenRWAContractAddress).to.not.equal(ZERO_ADDRESS);
-
-    // const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
-    // TODO: Check Vault import AccessControl.sol comment
-    // await vaultContract.grantAdminRole(tokenInsuranceContractAddress);
-
-    // const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
-    // TODO: Check Vault import AccessControl.sol comment
-    // await tokenRWAContract.grantAdminRole(tokenInsuranceContractAddress);
 
     return {
       protocolAdmin,
@@ -357,9 +349,9 @@ describe("TokenInsurance", function () {
     await tx_updateSenderCrossChainProperties.wait();
 
     const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
-    const [totalSupply, unitValue, decimals, dueDate, symbol] = await Promise.all([
+    const [totalSupply, totalValue, decimals, dueDate, symbol] = await Promise.all([
       tokenRWAContract.totalSupply(),
-      tokenRWAContract.unitValue(),
+      tokenRWAContract.totalValue(),
       tokenRWAContract.decimals(),
       tokenRWAContract.dueDate(),
       tokenRWAContract.symbol(),
@@ -367,7 +359,7 @@ describe("TokenInsurance", function () {
     const tokenRWAInfo = {
       securedAsset: tokenRWAContractAddress,
       totalSupply,
-      unitValue,
+      totalValue,
       decimals,
       dueDate,
       symbol,
@@ -415,7 +407,7 @@ describe("TokenInsurance", function () {
     return vaultContractAddress;
   };
 
-  const deployTokenInsurance = async ({ vaultAddress }) => {
+  const deployTokenInsurance = async () => {
     console.log(" --- Deploying Token Insurance contract --- ");
     const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
     const insurance = {
