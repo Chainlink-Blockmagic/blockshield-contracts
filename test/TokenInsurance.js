@@ -312,9 +312,9 @@ describe("TokenInsurance", function () {
 
   async function deployProtocol() {
     const [protocolAdmin] = await ethers.getSigners();
-    const tokenRWAContractAddress = await deployTokenRWA();
-    const vaultContractAddress = await deployVault();
     const mockUSDCContractAddress = await deployMockUsdc();
+    const tokenRWAContractAddress = await deployTokenRWA({ mockUSDCContractAddress });
+    const vaultContractAddress = await deployVault();
     const tokenInsuranceContractAddress = await deployTokenInsurance();
 
     expect(tokenInsuranceContractAddress).to.not.equal(ZeroAddress);
@@ -379,7 +379,7 @@ describe("TokenInsurance", function () {
     };
   }
 
-  const deployTokenRWA = async () => {
+  const deployTokenRWA = async ({ mockUSDCContractAddress }) => {
     console.log(" --- Deploying Token RWA contract --- ");
     const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
     const NEXT_YEAR = parseUnits(parseInt(NOW_IN_SECS + ONE_YEAR_IN_SECS).toString(), 0);
@@ -390,8 +390,9 @@ describe("TokenInsurance", function () {
       totalValue: ONE_MILLION,
       yield: parseEther("0.15"), // 15% yield
       dueDate: NEXT_YEAR,
+      transferPaymentToken: mockUSDCContractAddress
     }
-    const tokenRWAContract = await TokenRWA.deploy(rwa.name, rwa.symbol, rwa.totalSupply, rwa.totalValue, rwa.dueDate, rwa.yield);
+    const tokenRWAContract = await TokenRWA.deploy(rwa.name, rwa.symbol, rwa.totalSupply, rwa.totalValue, rwa.dueDate, rwa.yield, rwa.transferPaymentToken);
     const tokenRWAContractAddress = await tokenRWAContract.getAddress();
     console.log(`TokenRWA address: ${tokenRWAContractAddress}`);
     return tokenRWAContractAddress;
