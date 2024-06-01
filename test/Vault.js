@@ -1,10 +1,11 @@
 const { loadFixture } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
-const { parseEther, parseUnits } = require("ethers");
+const { parseEther, parseUnits, ZeroAddress } = require("ethers");
 
 const contracts = {
   VAULT: "Vault",
-  TOKEN_RWA: "TokenRWA"
+  TOKEN_RWA: "TokenRWA",
+  MOCK_USDC: "MockUSDC",
 };
 
 const NOW_IN_SECS = new Date().getTime() / 1000;
@@ -12,21 +13,19 @@ const ONE_YEAR_IN_SECS = 24 * 60 * 60;
 
 const ONE_MILLION = parseEther("1000000");
 const TEN_THOUSAND = parseEther("10000");
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-const AGGREGATOR_NETWORK_SEPOLIA = "0x694AA1769357215DE4FAC081bf1f309aDC325306";
 const ROUTER_CCIP_ID_OPTIMISM_SEPOLIA = "0x114A20A10b43D4115e5aeef7345a1A71d2a60C57";
-
 const TOKEN_INSURANCE_ADDRESS = "0x0000000000000000000000000000000000000001";
 
 describe("Vault", function () {
 
   async function deployProtocol() {
     const [protocolAdmin, client] = await ethers.getSigners();
-    const tokenRWAContractAddress = await deployTokenRWA();
+    const mockUSDCContractAddress = await deployMockUsdc();
+    const tokenRWAContractAddress = await deployTokenRWA({ mockUSDCContractAddress });
     const vaultContractAddress = await deployVault();
 
-    expect(vaultContractAddress).to.not.equal(ZERO_ADDRESS);
-    expect(tokenRWAContractAddress).to.not.equal(ZERO_ADDRESS);
+    expect(vaultContractAddress).to.not.equal(ZeroAddress);
+    expect(tokenRWAContractAddress).to.not.equal(ZeroAddress);
 
     return {
       protocolAdmin,
@@ -37,38 +36,24 @@ describe("Vault", function () {
     };
   }
 
-  describe("Deployment", function () {
-    describe('success scenarios', async () => {
-      it("Should grant admin role to deployer"
-      // , async function () {
-      //   const { vaultContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
-      //   const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
-      //   const adminRole = await vaultContract.ADMIN_ROLE();
-      //   const hasRole = await vaultContract.hasRole(adminRole, protocolAdmin.address);
-      //   expect(hasRole).to.equal(true);
-      // }
-      );
-    });
-  });
-
   describe("\n   Add Hire Insurance Record", function () {
     describe('error scenarios', async () => {
       it("Should revert if securedAsset_ is zero address", async () => {
         const { vaultContractAddress } = await loadFixture(deployProtocol);
         const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
-        await expect(vaultContract.addHiredInsurance(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0, 0))
+        await expect(vaultContract.addHiredInsurance(ZeroAddress, ZeroAddress, ZeroAddress, 0, 0))
         .to.be.revertedWith("securedAsset_ cannot be zero address");
       });
       it("Should revert if insuranceAddress_ is zero address", async () => {
         const { vaultContractAddress, tokenRWAContractAddress } = await loadFixture(deployProtocol);
         const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
-        await expect(vaultContract.addHiredInsurance(tokenRWAContractAddress, ZERO_ADDRESS, ZERO_ADDRESS, 0, 0))
+        await expect(vaultContract.addHiredInsurance(tokenRWAContractAddress, ZeroAddress, ZeroAddress, 0, 0))
         .to.be.revertedWith("insuranceAddress_ cannot be zero address");
       });
       it("Should revert if insuranceClient_ is zero address", async () => {
         const { vaultContractAddress, tokenRWAContractAddress, tokenInsuranceContractAddress } = await loadFixture(deployProtocol);
         const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
-        await expect(vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, ZERO_ADDRESS, 0, 0))
+        await expect(vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, ZeroAddress, 0, 0))
         .to.be.revertedWith("insuranceClient_ cannot be zero address");
       });
       it("Should revert if quantity_ is zero value", async () => {
@@ -163,7 +148,7 @@ describe("Vault", function () {
       });
     });
   });
-  const deployTokenRWA = async () => {
+  const deployTokenRWA = async ({ mockUSDCContractAddress }) => {
     console.log(" --- Deploying Token RWA contract --- ");
     const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
     const NEXT_YEAR = parseUnits(parseInt(NOW_IN_SECS + ONE_YEAR_IN_SECS).toString(), 0);
@@ -174,8 +159,9 @@ describe("Vault", function () {
       totalValue: ONE_MILLION,
       yield: parseEther("0.15"), // 15% yield
       dueDate: NEXT_YEAR,
+      transferPaymentToken: mockUSDCContractAddress
     }
-    const tokenRWAContract = await TokenRWA.deploy(rwa.name, rwa.symbol, rwa.totalSupply, rwa.totalValue, rwa.dueDate, rwa.yield);
+    const tokenRWAContract = await TokenRWA.deploy(rwa.name, rwa.symbol, rwa.totalSupply, rwa.totalValue, rwa.dueDate, rwa.yield, rwa.transferPaymentToken);
     const tokenRWAContractAddress = await tokenRWAContract.getAddress();
     console.log(`TokenRWA address: ${tokenRWAContractAddress}`);
     return tokenRWAContractAddress;
@@ -188,5 +174,14 @@ describe("Vault", function () {
     const vaultContractAddress = await vaultContract.getAddress();
     console.log(`Vault address: ${vaultContractAddress}`);
     return vaultContractAddress;
+  };
+
+  const deployMockUsdc = async () => {
+    console.log(" --- Deploying MockUSDC contract --- ");
+    const MockUSDC = await ethers.getContractFactory(contracts.MOCK_USDC);
+    const mockUSDCContract = await MockUSDC.deploy();
+    const mockUSDCContractAddress = await mockUSDCContract.getAddress();
+    console.log(`MockUSDC address: ${mockUSDCContract}`);
+    return mockUSDCContractAddress;
   };
 });

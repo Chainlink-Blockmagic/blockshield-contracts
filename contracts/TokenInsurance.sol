@@ -10,8 +10,9 @@ import {FunctionsRequest} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/l
 // TODO: It brings conflict with supportInterface of CCIP contract inherited by BlockshieldMessageReceiver.sol
 // import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "./libraries/PercentageUtils.sol";
@@ -56,8 +57,7 @@ contract TokenInsurance is
     struct TokenRWAInfo {
         address securedAsset;
         uint256 totalSupply;
-        uint256 unitValue;
-        uint256 decimals;
+        uint256 totalValue;
         uint256 dueDate;
         string symbol;
         bool isSet;
@@ -122,7 +122,7 @@ contract TokenInsurance is
         uint256 requiredAmount_ = getRwaTotalValue(quantity_);
 
         // Validate USDC amount
-        require(IERC20(transferTokenAddress).balanceOf(msg.sender) == requiredAmount_, "Insufficient USDC");
+        require(IERC20(transferTokenAddress).balanceOf(msg.sender) >= requiredAmount_, "Insufficient USDC");
         // TODO: check for possible maximum amount per user
 
         // Make CCIP call sending USDC from msg.sender and making a contract call
@@ -190,32 +190,34 @@ contract TokenInsurance is
     }
 
     function getUserPaymentAmount(uint256 quantity) internal view returns (uint256, uint256) {
-        uint256 rwaUnitValue = tokenRWAInfo.unitValue;
-        uint256 rwaDecimals = tokenRWAInfo.decimals;
-        uint256 insuranceUnitValue = rwaUnitValue * prime / 10 ** rwaDecimals;
-        uint256 insuranceTotalCost = quantity * insuranceUnitValue / 10 ** rwaDecimals;
+        uint256 rwaUnitValue = getRwaUnitValue();
+        uint256 paymentTokenDecimals = getPaymentTokenDecimals();
+        uint256 insuranceUnitValue = rwaUnitValue * prime / 10 ** paymentTokenDecimals;
+        uint256 insuranceTotalCost = quantity * insuranceUnitValue / 10 ** paymentTokenDecimals;
         uint256 totalValue = getRwaTotalValue(quantity);
         return (totalValue, insuranceTotalCost);
     }
 
     function getRwaTotalValue(uint256 quantity) public view returns (uint256 totalValue) {
-        totalValue = tokenRWAInfo.unitValue * quantity / 10 ** tokenRWAInfo.decimals;
+        totalValue = getRwaUnitValue() * quantity / 10 ** getPaymentTokenDecimals();
+    }
+
+    function approve(address _transferTokenAddress, address _router, uint256 _amount) internal override {
+        IERC20(_transferTokenAddress).approve(address(_router), _amount);
+    }
+
+    function getRwaUnitValue() public view returns (uint256 unitValue) {
+        unitValue = tokenRWAInfo.totalValue * 10 ** getPaymentTokenDecimals() / tokenRWAInfo.totalSupply;
+    }
+
+    function getPaymentTokenDecimals() public view returns (uint256 unitValue) {
+        return IERC20Metadata(transferTokenAddress).decimals();
     }
 
     function setVault(address vault_) external onlyOwner {
         if (vault_ != address(0)) {
             vault = vault_;
         }
-    }
-
-    function setSecuredAsset(address securedAsset_) external onlyOwner {
-        if (securedAsset_ != address(0)) {
-            tokenRWAInfo.securedAsset = securedAsset_;
-        }
-    }
-
-    function approve(address _transferTokenAddress, address _router, uint256 _amount) internal override {
-        IERC20(_transferTokenAddress).approve(address(_router), _amount);
     }
 
     /// @notice Returns the last price on network data feed

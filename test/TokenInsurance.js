@@ -14,7 +14,6 @@ const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
 
 const ONE_MILLION = parseEther("1000000");
 const TEN_THOUSAND = parseEther("10000");
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 const AGGREGATOR_NETWORK_POLYGON_AMOY = "0x1b8739bB4CdF0089d07097A9Ae5Bd274b29C6F16";
 const ROUTER_FUNCTIONS_ID_AMOY = "0xC22a79eBA640940ABB6dF0f7982cc119578E11De";
@@ -45,12 +44,12 @@ describe("TokenInsurance", function () {
     describe('error scenarios', async () => {
       it("Should revert if routerFunctions_ address is zero", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("", "PRECATORIO105", 0, ZERO_ADDRESS, ZERO_ADDRESS, AGGREGATOR_NETWORK_POLYGON_AMOY))
+        await expect(TokenInsurance.deploy("", "PRECATORIO105", 0, ZeroAddress, ZeroAddress, AGGREGATOR_NETWORK_POLYGON_AMOY))
         .to.be.revertedWith("Function: router_ cannot be zero");
       });
       it("Should revert if routerCCIP_ address is zero", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("", "PRECATORIO105", 0, ROUTER_FUNCTIONS_ID_AMOY, ZERO_ADDRESS, AGGREGATOR_NETWORK_POLYGON_AMOY))
+        await expect(TokenInsurance.deploy("", "PRECATORIO105", 0, ROUTER_FUNCTIONS_ID_AMOY, ZeroAddress, AGGREGATOR_NETWORK_POLYGON_AMOY))
         .to.be.revertedWithCustomError(TokenInsurance, "ZeroAddress")
       });
       it("Should revert if name is empty", async () => {
@@ -313,22 +312,14 @@ describe("TokenInsurance", function () {
 
   async function deployProtocol() {
     const [protocolAdmin] = await ethers.getSigners();
-    const tokenRWAContractAddress = await deployTokenRWA();
-    const vaultContractAddress = await deployVault();
     const mockUSDCContractAddress = await deployMockUsdc();
-    const tokenInsuranceContractAddress = await deployTokenInsurance({ vaultAddress: vaultContractAddress });
+    const tokenRWAContractAddress = await deployTokenRWA({ mockUSDCContractAddress });
+    const vaultContractAddress = await deployVault();
+    const tokenInsuranceContractAddress = await deployTokenInsurance();
 
-    expect(tokenInsuranceContractAddress).to.not.equal(ZERO_ADDRESS);
-    expect(vaultContractAddress).to.not.equal(ZERO_ADDRESS);
-    expect(tokenRWAContractAddress).to.not.equal(ZERO_ADDRESS);
-
-    // const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
-    // TODO: Check Vault import AccessControl.sol comment
-    // await vaultContract.grantAdminRole(tokenInsuranceContractAddress);
-
-    // const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
-    // TODO: Check Vault import AccessControl.sol comment
-    // await tokenRWAContract.grantAdminRole(tokenInsuranceContractAddress);
+    expect(tokenInsuranceContractAddress).to.not.equal(ZeroAddress);
+    expect(vaultContractAddress).to.not.equal(ZeroAddress);
+    expect(tokenRWAContractAddress).to.not.equal(ZeroAddress);
 
     return {
       protocolAdmin,
@@ -357,9 +348,9 @@ describe("TokenInsurance", function () {
     await tx_updateSenderCrossChainProperties.wait();
 
     const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
-    const [totalSupply, unitValue, decimals, dueDate, symbol] = await Promise.all([
+    const [totalSupply, totalValue, decimals, dueDate, symbol] = await Promise.all([
       tokenRWAContract.totalSupply(),
-      tokenRWAContract.unitValue(),
+      tokenRWAContract.totalValue(),
       tokenRWAContract.decimals(),
       tokenRWAContract.dueDate(),
       tokenRWAContract.symbol(),
@@ -367,7 +358,7 @@ describe("TokenInsurance", function () {
     const tokenRWAInfo = {
       securedAsset: tokenRWAContractAddress,
       totalSupply,
-      unitValue,
+      totalValue,
       decimals,
       dueDate,
       symbol,
@@ -388,7 +379,7 @@ describe("TokenInsurance", function () {
     };
   }
 
-  const deployTokenRWA = async () => {
+  const deployTokenRWA = async ({ mockUSDCContractAddress }) => {
     console.log(" --- Deploying Token RWA contract --- ");
     const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
     const NEXT_YEAR = parseUnits(parseInt(NOW_IN_SECS + ONE_YEAR_IN_SECS).toString(), 0);
@@ -399,8 +390,9 @@ describe("TokenInsurance", function () {
       totalValue: ONE_MILLION,
       yield: parseEther("0.15"), // 15% yield
       dueDate: NEXT_YEAR,
+      transferPaymentToken: mockUSDCContractAddress
     }
-    const tokenRWAContract = await TokenRWA.deploy(rwa.name, rwa.symbol, rwa.totalSupply, rwa.totalValue, rwa.dueDate, rwa.yield);
+    const tokenRWAContract = await TokenRWA.deploy(rwa.name, rwa.symbol, rwa.totalSupply, rwa.totalValue, rwa.dueDate, rwa.yield, rwa.transferPaymentToken);
     const tokenRWAContractAddress = await tokenRWAContract.getAddress();
     console.log(`TokenRWA address: ${tokenRWAContractAddress}`);
     return tokenRWAContractAddress;
@@ -415,7 +407,7 @@ describe("TokenInsurance", function () {
     return vaultContractAddress;
   };
 
-  const deployTokenInsurance = async ({ vaultAddress }) => {
+  const deployTokenInsurance = async () => {
     console.log(" --- Deploying Token Insurance contract --- ");
     const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
     const insurance = {

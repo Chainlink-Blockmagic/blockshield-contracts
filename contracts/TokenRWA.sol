@@ -15,24 +15,18 @@ contract TokenRWA is ERC20, ERC20Burnable, AccessControl {
     uint256 public dueDate;
     uint256 public yield;
     uint256 public totalValue;
-    uint256 public unitValue;
 
-    ///////////////////
-    // Modifiers
-    ///////////////////
-    modifier moreThanZero(uint256 amount) {
-        if (amount == 0) {
-            revert TokenRWA__NeedsMoreThanZero();
-        }
-        _;
-    }
+    address public transferPaymentToken;
 
-    ///////////////////
-    // Errors
-    ///////////////////
-    error TokenRWA__NeedsMoreThanZero();
-
-    constructor(string memory name_, string memory symbol_, uint256 totalSupply_, uint256 totalValue_, uint256 dueDate_, uint256 yield_) ERC20(name_, symbol_) {
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        uint256 totalSupply_,
+        uint256 totalValue_,
+        uint256 dueDate_,
+        uint256 yield_,
+        address transferPaymentToken_
+    ) ERC20(name_, symbol_) {
         require(bytes(name_).length > 0, "TokenRWA: Name cannot be empty");
         require(bytes(symbol_).length > 0, "TokenRWA: Symbol cannot be empty");
         require(bytes(symbol_).length > 3, "TokenRWA: Symbol must be longer than 3 characters");
@@ -40,23 +34,28 @@ contract TokenRWA is ERC20, ERC20Burnable, AccessControl {
         require(totalValue_ > 0, "TokenRWA: Total value must be greater than zero"); // TODO: This condition must be validated correctly. Something like totalSupply_ GREATER THAN 10k
         require(dueDate_ > block.timestamp, "TokenRWA: Due date must be in the future");
         require(yield_.checkPercentageThreshold(), "TokenRWA: Invalid yield percentage");
-        
+        require(transferPaymentToken_ != address(0), "TokenRWA: transferPaymentToken_ cannot be zero address");
+
         dueDate = dueDate_;
         yield = yield_;
         totalValue = totalValue_;
-        unitValue = totalValue * 10 ** decimals() / totalSupply_;
+        transferPaymentToken = transferPaymentToken_;
 
         _grantRole(ADMIN_ROLE, msg.sender);
         _mint(address(this), totalSupply_);
     }
 
-    /// @notice Retrieve RWA value into Ethereum through data feed
-    function getUnitValue() external view returns (uint256) {
-        return unitValue;
+    function calculateRWAValuePlusYield() external view returns (uint256) {
+        uint256 unitValue = getRwaUnitValue();
+        return unitValue + (unitValue * yield / 10 ** getPaymentTokenDecimals());
     }
 
-    function calculateRWAValuePlusYield() external view returns (uint256) {
-        return unitValue + (unitValue * yield / 10 ** decimals());
+    function getRwaUnitValue() public view returns (uint256 unitValue) {
+        unitValue = (totalValue * 10 ** getPaymentTokenDecimals()) / totalSupply();
+    }
+
+    function getPaymentTokenDecimals() public view returns (uint8) {
+        return IERC20Metadata(transferPaymentToken).decimals();
     }
 
     function allowSpendTokens(address spender, uint256 value) external onlyRole(ADMIN_ROLE) {
