@@ -1,8 +1,7 @@
 # blockshield-contracts
 
-# Deploy steps
 
-## Prerequisites
+# Prerequisites
 
 ### Chainlink CCIP Prerequisites
 Select two compatible CCIP networks. Check on lanes in following link [CCIP Testnet Lanes](https://docs.chain.link/ccip/supported-networks/v1_2_0/testnet)
@@ -26,24 +25,30 @@ Also we need compatibility for Chainlink Automations in **Source Blockchain Netw
 So check [Automations - Supported networks](https://docs.chain.link/chainlink-automation/overview/supported-networks)
 
 ## Compatible networks
-| Network | CCIP Lanes available | CCIP with USDC support| Function | Automation |
+| Network | CCIP Available Lanes | CCIP with USDC support| Function | Automation |
 | :---: | :---: | :---: | :---: | :---: | 
-| Polygon Amoy | Avalanche Fuji | x | x | x |
-| Polygon Amoy | Arbitrum Sepolia  | x | x | x |
-| Polygon Amoy | Optimism Sepolia | x | x | x |
-| Polygon Amoy | Ethereum Sepolia | x | x | x |
-| Avalanche Fuji | Arbitrum Sepolia | x | x | x |
-| Avalanche Fuji | Optimism Sepolia | x | x | x |
-| Avalanche Fuji | Polygon Amoy | x | x | x |
-| Avalanche Fuji | Ethereum Sepolia | x | x | x |
-| Arbitrum Sepolia | Avalanche Fuji | x | x | x |
-| Arbitrum Sepolia | Ethereum Sepolia | x | x | x |
-| Arbitrum Sepolia | Optimism Sepolia | x | x | x |
-| Optimism Sepolia | Avalanche Fuji | x | x | x |
-| Optimism Sepolia | Ethereum Sepolia | x | x | x |
-| Optimism Sepolia | Arbitrum Sepolia | x | x | x |
-| Optimism Sepolia | Polygon Amoy | x | x | x |
-| Ethereum Sepolia | Avalanche Fuji | x | x | x |
-| Ethereum Sepolia | Arbitrum Sepolia | x | x | x |
-| Ethereum Sepolia | Optimism Sepolia | x | x | x |
-| Ethereum Sepolia | Polygon Amoy | x | x | x |
+| Polygon Amoy      | [Avalanche Fuji, Arbitrum Sepolia, Optimism Sepolia, Ethereum Sepolia              ] | x | x | x |
+| Avalanche Fuji    | [                Arbitrum Sepolia, Optimism Sepolia, Ethereum Sepolia, Polygon Amoy] | x | x | x |
+| Arbitrum Sepolia  | [Avalanche Fuji,                   Optimism Sepolia, Ethereum Sepolia              ] | x | x | x |
+| Optimism Sepolia  | [Avalanche Fuji, Arbitrum Sepolia,                 , Ethereum Sepolia, Polygon Amoy] | x | x | x |
+| Ethereum Sepolia  | [Avalanche Fuji, Arbitrum Sepolia, Optimism Sepolia,                 , Polygon Amoy] | x | x | x |
+
+# Deploy steps
+1. Deploy Vault in Ethereum Sepolia
+2. Deploy TokenRWA in Ethereum Sepolia
+3. Deploy TokenInsurance in Polygon Amoy
+
+Interact with TokenInsurance
+4. Execute following methods:
+  - updateSenderCrossChainProperties() to provide CCIP needed attributes
+  - setVault() with vault contract address
+  - setToken() with tokenRWA contract address => tupla: ["0x967B332Dc38F9b40136F715Ca162f945A6fA7eCE",1000000000000000000000000,1000000000000000000,18,1717194614,"PRECATORIO105",true]
+5. Create a one Function Subscription in Chainlink [here](https://functions.chain.link/) and use same network used to deploy **TokenInsurance** contract
+  - Create the subscription (copy subscription ID)
+  - Add LINK funds in the correspondant network
+  - Add Consumer: send the **TokenInsurance** contract address
+6. Update Function request by script runing the following script
+```bash
+yarn update-request:amoy <SUBSCRIPTION_ID> <CONSUMER_ADDRESS (TokenInsurance address)> <TOKEN_RWA_SYMBOL>
+```
+7.
