@@ -175,7 +175,7 @@ describe("Vault", function () {
       yield: parseEther("0.15"), // 15% yield
       dueDate: NEXT_YEAR,
     }
-    const tokenRWAContract = await TokenRWA.deploy(rwa.name, rwa.symbol, rwa.totalSupply, rwa.totalValue, rwa.dueDate, rwa.yield, AGGREGATOR_NETWORK_SEPOLIA);
+    const tokenRWAContract = await TokenRWA.deploy(rwa.name, rwa.symbol, rwa.totalSupply, rwa.totalValue, rwa.dueDate, rwa.yield);
     const tokenRWAContractAddress = await tokenRWAContract.getAddress();
     console.log(`TokenRWA address: ${tokenRWAContractAddress}`);
     return tokenRWAContractAddress;

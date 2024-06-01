@@ -16,8 +16,6 @@ const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
 const ONE_MILLION = parseEther("1000000");
 const TEN_THOUSAND = parseEther("10000");
 
-const AGGREGATOR_NETWORK_SEPOLIA = "0x694AA1769357215DE4FAC081bf1f309aDC325306";
-
 describe("TokenRWA", function () {
 
   async function deployProtocol() {
@@ -36,56 +34,56 @@ describe("TokenRWA", function () {
     describe('error scenarios', async () => {
       it("Should revert if name is empty", async () => {
         const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
-        await expect(TokenRWA.deploy("", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, parseEther("1"), parseEther("0.15"), AGGREGATOR_NETWORK_SEPOLIA))
+        await expect(TokenRWA.deploy("", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, parseEther("1"), parseEther("0.15")))
         .to.be.revertedWith("TokenRWA: Name cannot be empty");
       });
       it("Should revert if symbol is empty", async () => {
         const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
-        await expect(TokenRWA.deploy("Precatorio 105", "", TEN_THOUSAND, ONE_MILLION, 0, 0, AGGREGATOR_NETWORK_SEPOLIA))
+        await expect(TokenRWA.deploy("Precatorio 105", "", TEN_THOUSAND, ONE_MILLION, 0, 0))
         .to.be.revertedWith("TokenRWA: Symbol cannot be empty");
       });
       it("Should revert if symbol is less than 3 characters", async () => {
         const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
-        await expect(TokenRWA.deploy("Precatorio 105", "PR", TEN_THOUSAND, ONE_MILLION, parseEther("1"), parseEther("0.15"), AGGREGATOR_NETWORK_SEPOLIA))
+        await expect(TokenRWA.deploy("Precatorio 105", "PR", TEN_THOUSAND, ONE_MILLION, parseEther("1"), parseEther("0.15")))
         .to.be.revertedWith("TokenRWA: Symbol must be longer than 3 characters");
       });
       it("Should revert if total supply is zero", async () => {
         const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
-        await expect(TokenRWA.deploy("Precatorio 105", "PRECATORIO105", 0, ONE_MILLION, parseEther("1"), parseEther("0.15"), AGGREGATOR_NETWORK_SEPOLIA))
+        await expect(TokenRWA.deploy("Precatorio 105", "PRECATORIO105", 0, ONE_MILLION, parseEther("1"), parseEther("0.15")))
         .to.be.revertedWith("TokenRWA: Total supply must be greater than zero");
       });
       it("Should revert if total value is zero", async () => {
         const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
-        await expect(TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, 0, parseEther("1"), parseEther("0.15"), AGGREGATOR_NETWORK_SEPOLIA))
+        await expect(TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, 0, parseEther("1"), parseEther("0.15")))
         .to.be.revertedWith("TokenRWA: Total value must be greater than zero");
       });
       it("Should revert if due date is zero", async () => {
         const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
-        await expect(TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, 0, parseEther("0.15"), AGGREGATOR_NETWORK_SEPOLIA))
+        await expect(TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, 0, parseEther("0.15")))
         .to.be.revertedWith("TokenRWA: Due date must be in the future");
       });
       it("Should revert if due date is before block timestamp", async () => {
         const LAST_YEAR = parseUnits(parseInt(NOW_IN_SECS - ONE_YEAR_IN_SECS).toString(), 0);
         const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
-        await expect(TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, LAST_YEAR, parseEther("0.15"), AGGREGATOR_NETWORK_SEPOLIA))
+        await expect(TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, LAST_YEAR, parseEther("0.15")))
         .to.be.revertedWith("TokenRWA: Due date must be in the future");
       });
       it("Should revert if yield is zero", async () => {
         const NEXT_YEAR = parseUnits(parseInt(NOW_IN_SECS + ONE_YEAR_IN_SECS).toString(), 0);
         const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
-        await expect(TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, NEXT_YEAR, 0, AGGREGATOR_NETWORK_SEPOLIA))
+        await expect(TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, NEXT_YEAR, 0))
         .to.be.revertedWith("TokenRWA: Invalid yield percentage");
       });
       it("Should revert if yield is greater than MAX_PERCENTAGE (1)", async () => {
         const NEXT_YEAR = parseUnits(parseInt(NOW_IN_SECS + ONE_YEAR_IN_SECS).toString(), 0);
         const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
-        await expect(TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, NEXT_YEAR, parseEther("1.01"), AGGREGATOR_NETWORK_SEPOLIA))
+        await expect(TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, NEXT_YEAR, parseEther("1.01")))
         .to.be.revertedWith("TokenRWA: Invalid yield percentage");
       });
       it("Should revert if yield is less than MIN_PERCENTAGE (0.01)", async () => {
         const NEXT_YEAR = parseUnits(parseInt(NOW_IN_SECS + ONE_YEAR_IN_SECS).toString(), 0);
         const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
-        await expect(TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, NEXT_YEAR, parseEther("0.009"), AGGREGATOR_NETWORK_SEPOLIA))
+        await expect(TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, NEXT_YEAR, parseEther("0.009")))
         .to.be.revertedWith("TokenRWA: Invalid yield percentage");
       });
     });
@@ -169,19 +167,19 @@ describe("TokenRWA", function () {
       it("Should deploy token RWA with a correct yield", async () => {
         const NEXT_YEAR = parseUnits(parseInt(NOW_IN_SECS + ONE_YEAR_IN_SECS).toString(), 0);
         const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
-        const tokenRWAContract = await TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, NEXT_YEAR, parseEther("1"), AGGREGATOR_NETWORK_SEPOLIA);
+        const tokenRWAContract = await TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, NEXT_YEAR, parseEther("1"));
         expect(await tokenRWAContract.yield()).to.equal(parseEther("1"));
       });
       it("Should deploy when yield is equals MIN_PERCENTAGE (0.01)", async () => {
         const NEXT_YEAR = parseUnits(parseInt(NOW_IN_SECS + ONE_YEAR_IN_SECS).toString(), 0);
         const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
-        const tokenRWAContract = await TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, NEXT_YEAR, parseEther("0.01"), AGGREGATOR_NETWORK_SEPOLIA);
+        const tokenRWAContract = await TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, NEXT_YEAR, parseEther("0.01"));
         expect(await tokenRWAContract.yield()).to.equal(parseEther("0.01"));
       });
       it("Should deploy when yield is equals MAX_PERCENTAGE (1)", async () => {
         const NEXT_YEAR = parseUnits(parseInt(NOW_IN_SECS + ONE_YEAR_IN_SECS).toString(), 0);
         const TokenRWA = await ethers.getContractFactory(contracts.TOKEN_RWA);
-        const tokenRWAContract = await TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, NEXT_YEAR, parseEther("1"), AGGREGATOR_NETWORK_SEPOLIA);
+        const tokenRWAContract = await TokenRWA.deploy("Precatorio 105", "PRECATORIO105", TEN_THOUSAND, ONE_MILLION, NEXT_YEAR, parseEther("1"));
         expect(await tokenRWAContract.yield()).to.equal(parseEther("1"));
       });
     });
@@ -199,7 +197,7 @@ describe("TokenRWA", function () {
       yield: parseEther("0.15"), // 15% yield
       dueDate: NEXT_YEAR,
     }
-    const tokenRWAContract = await TokenRWA.deploy(rwa.name, rwa.symbol, rwa.totalSupply, rwa.totalValue, rwa.dueDate, rwa.yield, AGGREGATOR_NETWORK_SEPOLIA);
+    const tokenRWAContract = await TokenRWA.deploy(rwa.name, rwa.symbol, rwa.totalSupply, rwa.totalValue, rwa.dueDate, rwa.yield);
     const tokenRWAContractAddress = await tokenRWAContract.getAddress();
     console.log(`TokenRWA address: ${tokenRWAContractAddress}`);
     return tokenRWAContractAddress;

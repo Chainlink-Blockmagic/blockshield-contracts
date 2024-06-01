@@ -101,7 +101,7 @@ contract TokenInsurance is
         require(bytes(symbol_).length > 0, "Symbol cannot be empty");
         require(bytes(symbol_).length > 3, "Symbol min length is 3");
         require(prime_.checkPercentageThreshold(), "Invalid prime percentage");
-        require(aggregatorNetwork != address(0), "TokenRWA: aggregatorNetwork cannot be zero address");
+        require(aggregatorNetwork != address(0), "TokenInsurance: aggregatorNetwork cannot be zero address");
 
         prime = prime_;
         priceFeed = AggregatorV3Interface(aggregatorNetwork);
