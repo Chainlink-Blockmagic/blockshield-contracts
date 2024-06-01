@@ -22,6 +22,7 @@ abstract contract FunctionWithUpdateRequest is
     bytes public s_lastError;
 
     bool public s_settled;
+    address public functionRouter;
 
     error UnexpectedRequestID(bytes32 requestId);
 
@@ -34,6 +35,7 @@ abstract contract FunctionWithUpdateRequest is
     constructor(address router_, address sender_) FunctionsClient(router_) ConfirmedOwner(sender_) {
         require(router_ != address(0), "Function: router_ cannot be zero");
         require(sender_ != address(0), "Function: sender_ cannot be zero");
+        functionRouter = router_;
     }
 
     function sendGetLiquidationRequest(
