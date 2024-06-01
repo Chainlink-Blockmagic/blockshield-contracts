@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
@@ -16,26 +15,18 @@ contract TokenRWA is ERC20, ERC20Burnable, AccessControl {
     uint256 public dueDate;
     uint256 public yield;
     uint256 public totalValue;
-    uint256 public unitValue;
 
-    AggregatorV3Interface internal priceFeed;
+    address public transferPaymentToken;
 
-    ///////////////////
-    // Modifiers
-    ///////////////////
-    modifier moreThanZero(uint256 amount) {
-        if (amount == 0) {
-            revert TokenRWA__NeedsMoreThanZero();
-        }
-        _;
-    }
-
-    ///////////////////
-    // Errors
-    ///////////////////
-    error TokenRWA__NeedsMoreThanZero();
-
-    constructor(string memory name_, string memory symbol_, uint256 totalSupply_, uint256 totalValue_, uint256 dueDate_, uint256 yield_, address aggregatorNetwork) ERC20(name_, symbol_) {
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        uint256 totalSupply_,
+        uint256 totalValue_,
+        uint256 dueDate_,
+        uint256 yield_,
+        address transferPaymentToken_
+    ) ERC20(name_, symbol_) {
         require(bytes(name_).length > 0, "TokenRWA: Name cannot be empty");
         require(bytes(symbol_).length > 0, "TokenRWA: Symbol cannot be empty");
         require(bytes(symbol_).length > 3, "TokenRWA: Symbol must be longer than 3 characters");
@@ -43,53 +34,28 @@ contract TokenRWA is ERC20, ERC20Burnable, AccessControl {
         require(totalValue_ > 0, "TokenRWA: Total value must be greater than zero"); // TODO: This condition must be validated correctly. Something like totalSupply_ GREATER THAN 10k
         require(dueDate_ > block.timestamp, "TokenRWA: Due date must be in the future");
         require(yield_.checkPercentageThreshold(), "TokenRWA: Invalid yield percentage");
-        require(aggregatorNetwork != address(0), "TokenRWA: aggregatorNetwork cannot be zero address");
+        require(transferPaymentToken_ != address(0), "TokenRWA: transferPaymentToken_ cannot be zero address");
 
         dueDate = dueDate_;
         yield = yield_;
         totalValue = totalValue_;
-        unitValue = totalValue * 10 ** decimals() / totalSupply_;
-        priceFeed = AggregatorV3Interface(aggregatorNetwork);
+        transferPaymentToken = transferPaymentToken_;
 
         _grantRole(ADMIN_ROLE, msg.sender);
         _mint(address(this), totalSupply_);
     }
 
-    /**
-    * Returns the latest price
-    */
-    function getChainlinkDataFeedLatestAnswer() public view returns (int) {
-        (
-            /*uint80 roundID*/,
-            int price,
-            /*uint startedAt*/,
-            /*uint timeStamp*/,
-            /*uint80 answeredInRound*/
-        ) = priceFeed.latestRoundData();
-        return price;
-    }
-
-    function usdAmount(uint256 amountETH) moreThanZero(amountETH) public view returns (uint256) {
-        // Sent amountETH, how many usd I have
-        uint256 ethUsd = uint256(getChainlinkDataFeedLatestAnswer());     // with 8 decimal places
-        uint256 amountUSD = amountETH * ethUsd / 10**18;                  //ETH = 18 decimal places
-        return amountUSD;
-    }
-
-     function ethAmount(uint256 amountUSD) moreThanZero(amountUSD) public view returns (uint256) {
-        // Sent amountUSD, how many eth I have
-        uint256 ethUsd = uint256(getChainlinkDataFeedLatestAnswer());   // with 8 decimal places
-        uint256 amountETH = (amountUSD * 10**18)/ ethUsd;               // ETH = 18 decimal places
-        return amountETH;
-    }
-
-    /// @notice Retrieve RWA value into Ethereum through data feed
-    function getUnitValue() external view returns (uint256) {
-        return unitValue;
-    }
-
     function calculateRWAValuePlusYield() external view returns (uint256) {
-        return unitValue + (unitValue * yield / 10 ** decimals());
+        uint256 unitValue = getRwaUnitValue();
+        return unitValue + (unitValue * yield / 10 ** getPaymentTokenDecimals());
+    }
+
+    function getRwaUnitValue() public view returns (uint256 unitValue) {
+        unitValue = (totalValue * 10 ** getPaymentTokenDecimals()) / totalSupply();
+    }
+
+    function getPaymentTokenDecimals() public view returns (uint8) {
+        return IERC20Metadata(transferPaymentToken).decimals();
     }
 
     function allowSpendTokens(address spender, uint256 value) external onlyRole(ADMIN_ROLE) {
