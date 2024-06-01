@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+// import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "./libraries/PercentageUtils.sol";
 import "./FunctionWithUpdateRequest.sol";
@@ -25,7 +25,7 @@ import "hardhat/console.sol";
 contract TokenInsurance is
     ERC20,
     ERC20Burnable,
-    ReentrancyGuard,
+    // ReentrancyGuard,
     AutomationCompatibleInterface,
     // AccessControl,
     FunctionWithUpdateRequest,
@@ -114,7 +114,7 @@ contract TokenInsurance is
 
     /// @notice The way in which the clients contract insurances
     /// @param quantity_ Amount of tokens the client want to buy. 
-    function hireInsurance(uint256 quantity_) external nonReentrant {
+    function hireInsurance(uint256 quantity_) external {
         if (transferTokenAddress == address(0)) revert ZeroAddress();
         require(vault != address(0), "vault is not set yet");
         require(tokenRWAInfo.isSet, "tokenRWAInfo is not set yet");
