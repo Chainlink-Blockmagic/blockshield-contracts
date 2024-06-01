@@ -16,15 +16,15 @@ contract MockTokenInsurance is TokenInsurance {
     ) TokenInsurance(name_, symbol_, prime_, routerFunctions_, routerCCIP_) {}
 
     function sendMethodCallWithUSDC(
-        address _destinationReceiverAddress,
-        uint256 _amount,
-        bytes memory _data
+        address,
+        uint256,
+        bytes memory
     ) internal pure override returns (bytes32) {
       return keccak256(abi.encodePacked(""));
     }
 
     function sendGetLiquidationRequest(
-        address tokenRWA,
-        string memory symbol
+        address,
+        string memory
     ) public override pure {}
 }
