@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/automation/AutomationCompatible.sol";
-
 import {FunctionsClient} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/FunctionsClient.sol";
 import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import {FunctionsRequest} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol";
@@ -36,6 +36,9 @@ contract TokenInsurance is
 //    /// @dev Access control constants
 //     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
+    /// @notice DataFeed aggregator to retrieve price for USD/USDC
+    AggregatorV3Interface internal priceFeed;
+
     /// @notice Vault is the contract who holds the RWAs tokens and waits liquidation
     address public vault;
 
@@ -65,13 +68,29 @@ contract TokenInsurance is
     event UserPayment(address indexed inusrance, address indexed client, uint256 paymentValue, uint256 totalValue, uint256 insuranceTotalCost);
     event PerformUpkeep(address indexed securedAsset, address indexed insurance);
 
+    ///////////////////
+    // Modifiers
+    ///////////////////
+    modifier moreThanZero(uint256 amount) {
+        if (amount == 0) {
+            revert TokenInsurance__NeedsMoreThanZero();
+        }
+        _;
+    }
+
+    ///////////////////
+    // Errors
+    ///////////////////
+    error TokenInsurance__NeedsMoreThanZero();
+
     /// @notice It will mint the total supply of the RWA secured asset to the contract itself
     constructor(
         string memory name_,
         string memory symbol_,
         uint256 prime_,
         address routerFunctions_,
-        address routerCCIP_
+        address routerCCIP_,
+        address aggregatorNetwork
     )
         ERC20(name_, symbol_)
         FunctionWithUpdateRequest(routerFunctions_, msg.sender)
@@ -82,8 +101,10 @@ contract TokenInsurance is
         require(bytes(symbol_).length > 0, "Symbol cannot be empty");
         require(bytes(symbol_).length > 3, "Symbol min length is 3");
         require(prime_.checkPercentageThreshold(), "Invalid prime percentage");
+        require(aggregatorNetwork != address(0), "TokenInsurance: aggregatorNetwork cannot be zero address");
 
         prime = prime_;
+        priceFeed = AggregatorV3Interface(aggregatorNetwork);
 
         // _grantRole(ADMIN_ROLE, msg.sender);
         // _grantRole(ADMIN_ROLE, address(this));
@@ -195,5 +216,17 @@ contract TokenInsurance is
 
     function approve(address _transferTokenAddress, address _router, uint256 _amount) internal override {
         IERC20(_transferTokenAddress).approve(address(_router), _amount);
+    }
+
+    /// @notice Returns the last price on network data feed
+    function getLatestPrice() public view returns (int) {
+        (
+            /*uint80 roundID*/,
+            int price,
+            /*uint startedAt*/,
+            /*uint timeStamp*/, 
+            /*uint80 answeredInRound*/
+        ) = priceFeed.latestRoundData();
+        return price;
     }
 }
