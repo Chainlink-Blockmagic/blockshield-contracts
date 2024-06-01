@@ -20,6 +20,8 @@ const { abi: RWA_LIQUIDATION_Abi } = require("../artifacts/contracts/TokenInsura
 const ethers = require("ethers");
 const { BigNumber } = require('bignumber.js');
 
+
+console.log(`Using ethers.js version: ${ethers.version}`);
 const [,,ROUTER_ADDRESS, DON_ID, GAS_LIMIT_CALLBACK_STR, SUBSCRIPTION_ID_STR, CONSUMER_ADDRESS, TOKEN_RWA_SYMBOL] = process.argv;
 
 console.log("ROUTER_ADDRESS", ROUTER_ADDRESS)
@@ -32,6 +34,10 @@ console.log("TOKEN_RWA_SYMBOL", TOKEN_RWA_SYMBOL)
 const GAS_LIMIT_CALLBACK = parseInt(GAS_LIMIT_CALLBACK_STR);
 
 const updateRequestPolygonAmoy = async () => {
+  const routerAddress = ROUTER_ADDRESS;
+  const donId = DON_ID;
+  const SUBSCRIPTION_ID = parseInt(SUBSCRIPTION_ID_STR);
+
   if (!ROUTER_ADDRESS)
     throw new Error(`ROUTER_ADDRESS not provided  - send the token symbol you want to update at command line`);
   if (!DON_ID)
@@ -44,11 +50,6 @@ const updateRequestPolygonAmoy = async () => {
     throw new Error(`CONSUMER_ADDRESS not provided  - send the token symbol you want to update at command line`);
   if (!TOKEN_RWA_SYMBOL)
     throw new Error(`TOKEN_RWA_SYMBOL not provided  - send the token symbol you want to update at command line`);
-
-  const routerAddress = ROUTER_ADDRESS;
-  const donId = DON_ID;
-  const CONSUMER_ADDRESS = CONSUMER_ADDRESS;
-  const SUBSCRIPTION_ID = parseInt(SUBSCRIPTION_ID_STR);
 
   // Initialize functions settings
   const source = fs
@@ -69,9 +70,12 @@ const updateRequestPolygonAmoy = async () => {
 
   if (!AMOY_RPC_URL)
     throw new Error(`rpcUrl not provided  - check your environment variables`);
+  console.log("AMOY_RPC_URL", AMOY_RPC_URL);
 
-  const provider = new ethers.JsonRpcProvider(AMOY_RPC_URL);
-  const signer = new ethers.Wallet(PROTOCOL_ADMIN_ACCOUNT_PRIVATE_KEY).connect(provider);
+  const provider = new ethers.JsonRpcProvider("https://rpc-amoy.polygon.technology");
+  const signer = new ethers.Wallet(PROTOCOL_ADMIN_ACCOUNT_PRIVATE_KEY, provider);
+
+  console.log("signer", signer);
 
   ///////// START SIMULATION ////////////
   console.log("Start simulation...");
@@ -90,7 +94,7 @@ const updateRequestPolygonAmoy = async () => {
   } else {
     const returnType = ReturnType.uint256;
     const responseBytesHexstring = response.responseBytesHexstring;
-    if (ethers.utils.arrayify(responseBytesHexstring).length > 0) {
+    if (ethers.getBytes(responseBytesHexstring).length > 0) {
       const decodedResponse = decodeResult(
         response.responseBytesHexstring,
         returnType
@@ -127,25 +131,25 @@ const updateRequestPolygonAmoy = async () => {
   // Update request settings
   console.log("Update request settings.....");
 
-  const estimatedGas = await functionConsumer.estimateGas.updateRequest(functionsRequestBytesHexString,
+  const estimatedGas = await functionConsumer.updateRequest.estimateGas(functionsRequestBytesHexString,
     SUBSCRIPTION_ID,
     GAS_LIMIT_CALLBACK,
-    ethers.utils.formatBytes32String(donId)
+    ethers.encodeBytes32String(donId)
   );
   console.log('Estimated Gas:', estimatedGas.toString());
   const estimatedGasBn = new BigNumber(estimatedGas);
-  const gasLimitTx = estimatedGasBn.plus(ethers.utils.parseUnits("5000", "wei"));   // Adding a buffer
+  const gasLimitTx = estimatedGasBn.plus(ethers.parseUnits("5000", "wei"));   // Adding a buffer
 
   const transaction = await functionConsumer.updateRequest(
     functionsRequestBytesHexString,
     SUBSCRIPTION_ID,
     GAS_LIMIT_CALLBACK,
-    ethers.utils.formatBytes32String(donId), // jobId is bytes32 representation of donId,
+    ethers.encodeBytes32String(donId), // jobId is bytes32 representation of donId,
     // { gasLimit: ethers.utils.parseUnits("78517", "wei") }
-    { gasLimit: gasLimitTx }
+    { gasLimit: gasLimitTx.valueOf() }
   );
 
-  console.log('⌛ Waiting transaction to be confirmed ...', receipt.blockNumber);
+  console.log('⌛ Waiting transaction to be confirmed ...');
   const receipt = await transaction.wait();
   console.log('✅ Transaction confirmed in block', receipt.blockNumber);
 
