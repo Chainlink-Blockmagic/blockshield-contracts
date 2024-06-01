@@ -1,6 +1,6 @@
 const { loadFixture } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
-const { parseEther, parseUnits } = require("ethers");
+const { parseEther, parseUnits, ZeroAddress } = require("ethers");
 
 const contracts = {
   VAULT: "Vault",
@@ -12,7 +12,6 @@ const ONE_YEAR_IN_SECS = 24 * 60 * 60;
 
 const ONE_MILLION = parseEther("1000000");
 const TEN_THOUSAND = parseEther("10000");
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const AGGREGATOR_NETWORK_SEPOLIA = "0x694AA1769357215DE4FAC081bf1f309aDC325306";
 const ROUTER_CCIP_ID_OPTIMISM_SEPOLIA = "0x114A20A10b43D4115e5aeef7345a1A71d2a60C57";
 
@@ -25,8 +24,8 @@ describe("Vault", function () {
     const tokenRWAContractAddress = await deployTokenRWA();
     const vaultContractAddress = await deployVault();
 
-    expect(vaultContractAddress).to.not.equal(ZERO_ADDRESS);
-    expect(tokenRWAContractAddress).to.not.equal(ZERO_ADDRESS);
+    expect(vaultContractAddress).to.not.equal(ZeroAddress);
+    expect(tokenRWAContractAddress).to.not.equal(ZeroAddress);
 
     return {
       protocolAdmin,
@@ -42,19 +41,19 @@ describe("Vault", function () {
       it("Should revert if securedAsset_ is zero address", async () => {
         const { vaultContractAddress } = await loadFixture(deployProtocol);
         const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
-        await expect(vaultContract.addHiredInsurance(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0, 0))
+        await expect(vaultContract.addHiredInsurance(ZeroAddress, ZeroAddress, ZeroAddress, 0, 0))
         .to.be.revertedWith("securedAsset_ cannot be zero address");
       });
       it("Should revert if insuranceAddress_ is zero address", async () => {
         const { vaultContractAddress, tokenRWAContractAddress } = await loadFixture(deployProtocol);
         const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
-        await expect(vaultContract.addHiredInsurance(tokenRWAContractAddress, ZERO_ADDRESS, ZERO_ADDRESS, 0, 0))
+        await expect(vaultContract.addHiredInsurance(tokenRWAContractAddress, ZeroAddress, ZeroAddress, 0, 0))
         .to.be.revertedWith("insuranceAddress_ cannot be zero address");
       });
       it("Should revert if insuranceClient_ is zero address", async () => {
         const { vaultContractAddress, tokenRWAContractAddress, tokenInsuranceContractAddress } = await loadFixture(deployProtocol);
         const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
-        await expect(vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, ZERO_ADDRESS, 0, 0))
+        await expect(vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, ZeroAddress, 0, 0))
         .to.be.revertedWith("insuranceClient_ cannot be zero address");
       });
       it("Should revert if quantity_ is zero value", async () => {

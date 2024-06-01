@@ -14,7 +14,6 @@ const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
 
 const ONE_MILLION = parseEther("1000000");
 const TEN_THOUSAND = parseEther("10000");
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 const AGGREGATOR_NETWORK_SEPOLIA = "0x694AA1769357215DE4FAC081bf1f309aDC325306";
 const ROUTER_FUNCTIONS_ID_AMOY = "0xC22a79eBA640940ABB6dF0f7982cc119578E11De";
@@ -45,12 +44,12 @@ describe("TokenInsurance", function () {
     describe('error scenarios', async () => {
       it("Should revert if routerFunctions_ address is zero", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("", "PRECATORIO105", 0, ZERO_ADDRESS, ZERO_ADDRESS))
+        await expect(TokenInsurance.deploy("", "PRECATORIO105", 0, ZeroAddress, ZeroAddress))
         .to.be.revertedWith("Function: router_ cannot be zero");
       });
       it("Should revert if routerCCIP_ address is zero", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("", "PRECATORIO105", 0, ROUTER_FUNCTIONS_ID_AMOY, ZERO_ADDRESS))
+        await expect(TokenInsurance.deploy("", "PRECATORIO105", 0, ROUTER_FUNCTIONS_ID_AMOY, ZeroAddress))
         .to.be.revertedWithCustomError(TokenInsurance, "ZeroAddress")
       });
       it("Should revert if name is empty", async () => {
@@ -318,9 +317,9 @@ describe("TokenInsurance", function () {
     const mockUSDCContractAddress = await deployMockUsdc();
     const tokenInsuranceContractAddress = await deployTokenInsurance();
 
-    expect(tokenInsuranceContractAddress).to.not.equal(ZERO_ADDRESS);
-    expect(vaultContractAddress).to.not.equal(ZERO_ADDRESS);
-    expect(tokenRWAContractAddress).to.not.equal(ZERO_ADDRESS);
+    expect(tokenInsuranceContractAddress).to.not.equal(ZeroAddress);
+    expect(vaultContractAddress).to.not.equal(ZeroAddress);
+    expect(tokenRWAContractAddress).to.not.equal(ZeroAddress);
 
     return {
       protocolAdmin,
