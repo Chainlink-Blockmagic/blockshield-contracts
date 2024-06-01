@@ -36,13 +36,28 @@ So check [Automations - Supported networks](https://docs.chain.link/chainlink-au
 # Deploy steps
 1. Deploy Vault in Ethereum Sepolia
 2. Deploy TokenRWA in Ethereum Sepolia
+  - Set USDC Ethereum Sepolia address: `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238`
 3. Deploy TokenInsurance in Polygon Amoy
 
 Interact with TokenInsurance
 4. Execute following methods:
-  - updateSenderCrossChainProperties() to provide CCIP needed attributes
+  - updateSenderCrossChainProperties() to provide CCIP needed attributes 
+    ```bash
+    { _destinationChainSelector: 16015286601757825753, _linkAddress: 0x0Fd9e8d3aF1aaee056EB9e802c3A762a667b1904, _transferTokenAddress (USDC): 0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582 }
+    ```
   - setVault() with vault contract address
-  - setToken() with tokenRWA contract address => tupla: ["0x967B332Dc38F9b40136F715Ca162f945A6fA7eCE",1000000000000000000000000,1000000000000000000,18,1717194614,"PRECATORIO105",true]
+  - setToken() with tokenRWA contract address
+    ```
+    struct TokenRWAInfo { 
+        address securedAsset;
+        uint256 totalSupply;
+        uint256 totalValue;
+        uint256 dueDate;
+        string symbol;
+        bool isSet;
+    }
+    ```
+    - tuple: ```["0x967B332Dc38F9b40136F715Ca162f945A6fA7eCE",1000000000000000000000000,1000000000000000000000000,1717194614,"PRECATORIO105",true]```
 5. Create a one Function Subscription in Chainlink [here](https://functions.chain.link/) and use same network used to deploy **TokenInsurance** contract
   - Create the subscription (copy subscription ID)
   - Add LINK funds in the correspondant network
