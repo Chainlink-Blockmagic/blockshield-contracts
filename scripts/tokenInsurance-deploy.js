@@ -56,7 +56,7 @@ const deployTokenInsurance = async () => {
     aggregatorNetwork: networkDetails.AGGREGATOR_NETWORK_ADDRESS
   }
   const tokenInsuranceContract = await hre.ethers.deployContract(
-    contracts.TOKEN_INSURANCE, 
+    contracts.TOKEN_INSURANCE,
     [
       insurance.name,
       insurance.symbol,
