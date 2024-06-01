@@ -27,10 +27,13 @@
     "bignumber.js": "^9.1.2",
     "chai": "^4.2.0",
     "dotenv": "^16.4.5",
-    "ethers": "^6.4.0",
+    "ethers": "^6.12.1",
     "hardhat": "^2.22.4",
     "hardhat-gas-reporter": "^1.0.8",
     "solidity-coverage": "^0.8.12",
     "typechain": "^8.3.0"
+  },
+  "resolutions": {
+    "ethers": "^6.12.1"
   }
 }
