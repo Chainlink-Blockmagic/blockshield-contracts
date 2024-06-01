@@ -8,4 +8,11 @@ library PercentageUtils {
     function checkPercentageThreshold(uint256 percentage) internal pure returns (bool) {
         return percentage >= MIN_PERCENTAGE && percentage <= MAX_PERCENTAGE;
     }
+
+    function toDecimals(uint256 num, uint8 decimals) internal pure returns (uint256) { 
+        return num * 10 ** decimals;
+    }
+    function toInteger(uint256 num, uint8 decimals) internal pure returns (uint256) {
+        return num / 10 ** decimals;
+    }
 }
