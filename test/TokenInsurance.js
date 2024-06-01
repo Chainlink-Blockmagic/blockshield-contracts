@@ -15,7 +15,7 @@ const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
 const ONE_MILLION = parseEther("1000000");
 const TEN_THOUSAND = parseEther("10000");
 
-const AGGREGATOR_NETWORK_SEPOLIA = "0x694AA1769357215DE4FAC081bf1f309aDC325306";
+const AGGREGATOR_NETWORK_POLYGON_AMOY = "0x1b8739bB4CdF0089d07097A9Ae5Bd274b29C6F16";
 const ROUTER_FUNCTIONS_ID_AMOY = "0xC22a79eBA640940ABB6dF0f7982cc119578E11De";
 const ROUTER_CCIP_ID_OPTIMISM_SEPOLIA = "0x114A20A10b43D4115e5aeef7345a1A71d2a60C57";
 
@@ -44,42 +44,42 @@ describe("TokenInsurance", function () {
     describe('error scenarios', async () => {
       it("Should revert if routerFunctions_ address is zero", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("", "PRECATORIO105", 0, ZeroAddress, ZeroAddress))
+        await expect(TokenInsurance.deploy("", "PRECATORIO105", 0, ZeroAddress, ZeroAddress, AGGREGATOR_NETWORK_POLYGON_AMOY))
         .to.be.revertedWith("Function: router_ cannot be zero");
       });
       it("Should revert if routerCCIP_ address is zero", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("", "PRECATORIO105", 0, ROUTER_FUNCTIONS_ID_AMOY, ZeroAddress))
+        await expect(TokenInsurance.deploy("", "PRECATORIO105", 0, ROUTER_FUNCTIONS_ID_AMOY, ZeroAddress, AGGREGATOR_NETWORK_POLYGON_AMOY))
         .to.be.revertedWithCustomError(TokenInsurance, "ZeroAddress")
       });
       it("Should revert if name is empty", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("", "PRECATORIO105", 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
+        await expect(TokenInsurance.deploy("", "PRECATORIO105", 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY, AGGREGATOR_NETWORK_POLYGON_AMOY))
         .to.be.revertedWith("Name cannot be empty");
       });
       it("Should revert if symbol is empty", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "", 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
+        await expect(TokenInsurance.deploy("Precatorio 105", "", 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY, AGGREGATOR_NETWORK_POLYGON_AMOY))
         .to.be.revertedWith("Symbol cannot be empty");
       });
       it("Should revert if symbol is less than 3 characters", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "PRE", 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
+        await expect(TokenInsurance.deploy("Precatorio 105", "PRE", 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY, AGGREGATOR_NETWORK_POLYGON_AMOY))
         .to.be.revertedWith("Symbol min length is 3");
       });
       it("Should revert if prime is zero", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
+        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", 0, ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY, AGGREGATOR_NETWORK_POLYGON_AMOY))
         .to.be.revertedWith("Invalid prime percentage");
       });
       it("Should revert if prime is greater than MAX_PERCENTAGE (1)", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", parseEther("1.01"), ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
+        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", parseEther("1.01"), ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY, AGGREGATOR_NETWORK_POLYGON_AMOY))
         .to.be.revertedWith("Invalid prime percentage");
       });
       it("Should revert if prime is less than MIN_PERCENTAGE (0.01)", async () => {
         const TokenInsurance = await ethers.getContractFactory(contracts.MOCK_TOKEN_INSURANCE);
-        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", parseEther("0.009"), ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY))
+        await expect(TokenInsurance.deploy("Precatorio 105", "blockshield.PRECATORIO105", parseEther("0.009"), ROUTER_FUNCTIONS_ID_AMOY, ROUTER_CCIP_ID_AMOY, AGGREGATOR_NETWORK_POLYGON_AMOY))
         .to.be.revertedWith("Invalid prime percentage");
       });
     });
@@ -391,7 +391,7 @@ describe("TokenInsurance", function () {
       yield: parseEther("0.15"), // 15% yield
       dueDate: NEXT_YEAR,
     }
-    const tokenRWAContract = await TokenRWA.deploy(rwa.name, rwa.symbol, rwa.totalSupply, rwa.totalValue, rwa.dueDate, rwa.yield, AGGREGATOR_NETWORK_SEPOLIA);
+    const tokenRWAContract = await TokenRWA.deploy(rwa.name, rwa.symbol, rwa.totalSupply, rwa.totalValue, rwa.dueDate, rwa.yield);
     const tokenRWAContractAddress = await tokenRWAContract.getAddress();
     console.log(`TokenRWA address: ${tokenRWAContractAddress}`);
     return tokenRWAContractAddress;
@@ -416,7 +416,7 @@ describe("TokenInsurance", function () {
       routerFunctions: ROUTER_FUNCTIONS_ID_AMOY,
       routerCCIP: ROUTER_CCIP_ID_AMOY,
     }
-    const tokenInsuranceContract = await TokenInsurance.deploy(insurance.name, insurance.symbol, insurance.prime, insurance.routerFunctions, insurance.routerCCIP);
+    const tokenInsuranceContract = await TokenInsurance.deploy(insurance.name, insurance.symbol, insurance.prime, insurance.routerFunctions, insurance.routerCCIP, AGGREGATOR_NETWORK_POLYGON_AMOY);
     const tokenInsuranceContractAddress = await tokenInsuranceContract.getAddress();
     console.log(`TokenInsurance address: ${tokenInsuranceContractAddress}`);
     return tokenInsuranceContractAddress;

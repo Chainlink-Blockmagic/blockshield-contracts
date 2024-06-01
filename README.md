@@ -38,6 +38,7 @@ So check [Automations - Supported networks](https://docs.chain.link/chainlink-au
 2. Deploy TokenRWA in Ethereum Sepolia
   - Set USDC Ethereum Sepolia address: `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238`
 3. Deploy TokenInsurance in Polygon Amoy
+  - To use the `AggregatorV3Interface` to retrieve the last price for `USDC/USD` on *Polygon Amoy*, the address is: `0x1b8739bB4CdF0089d07097A9Ae5Bd274b29C6F16`
 
 Interact with TokenInsurance
 4. Execute following methods:
@@ -66,4 +67,3 @@ Interact with TokenInsurance
 ```bash
 yarn update-request:amoy <SUBSCRIPTION_ID> <CONSUMER_ADDRESS (TokenInsurance address)> <TOKEN_RWA_SYMBOL>
 ```
-7.
