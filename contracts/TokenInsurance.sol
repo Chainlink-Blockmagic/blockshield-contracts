@@ -160,7 +160,7 @@ contract TokenInsurance is
         emit PerformUpkeep(tokenRWAInfo.securedAsset, address(this));
     }
 
-    function callVaultHandleRWAPayment() internal override {
+    function callVaultHandleRWAPayment() public override {
         bool liquidationResponse = s_settled;
         bytes memory data = abi.encodeWithSignature(
             "handleRWAPayment(bool,address,uint256)",

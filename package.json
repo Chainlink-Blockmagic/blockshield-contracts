@@ -6,8 +6,10 @@
   "author": "Ramiro Gonzalez <ramirogc21@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "deploy:amoy": "npx hardhat run scripts/deploy.js",
-    "update-request:amoy": "node scripts/updateTokenInsuranceRequest.js 0xC22a79eBA640940ABB6dF0f7982cc119578E11De fun-polygon-amoy-1 3000000"
+    "deploy:amoy": "npx hardhat run scripts/deploy.js --network amoy",
+    "update-request:amoy": "node scripts/updateTokenInsuranceRequest.js 0xC22a79eBA640940ABB6dF0f7982cc119578E11De fun-polygon-amoy-1 3000000",
+    "token-insurance-deploy:amoy": "npx hardhat run scripts/tokenInsurance-deploy.js --network amoy",
+    "token-insurance-setup:amoy": "npx hardhat run scripts/tokenInsurance-setup.js --network amoy"
   },
   "devDependencies": {
     "@chainlink/contracts": "^1.1.0",

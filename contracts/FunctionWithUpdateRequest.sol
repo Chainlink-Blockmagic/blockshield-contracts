@@ -103,5 +103,5 @@ abstract contract FunctionWithUpdateRequest is
     }
 
 
-    function callVaultHandleRWAPayment() internal virtual;
+    function callVaultHandleRWAPayment() public virtual;
 }
