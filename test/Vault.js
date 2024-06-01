@@ -37,20 +37,6 @@ describe("Vault", function () {
     };
   }
 
-  describe("Deployment", function () {
-    describe('success scenarios', async () => {
-      it("Should grant admin role to deployer"
-      // , async function () {
-      //   const { vaultContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
-      //   const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
-      //   const adminRole = await vaultContract.ADMIN_ROLE();
-      //   const hasRole = await vaultContract.hasRole(adminRole, protocolAdmin.address);
-      //   expect(hasRole).to.equal(true);
-      // }
-      );
-    });
-  });
-
   describe("\n   Add Hire Insurance Record", function () {
     describe('error scenarios', async () => {
       it("Should revert if securedAsset_ is zero address", async () => {
