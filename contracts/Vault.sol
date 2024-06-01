@@ -127,8 +127,6 @@ contract Vault is
             if (isInsuracePaid) amountToTransfer = insuranceDetails.securedAmount - insuranceCost;
             else amountToTransfer = (insuranceDetails.quantity * ITokenRWA(securedAsset).calculateRWAValuePlusYield()) - insuranceCost;
 
-            // payable(currentInsuranceOwner).transfer(amountToTransfer);
-
             totalAmount += amountToTransfer;
 
             if (isInsuracePaid) emit InsurancePaid(securedAsset, currentInsuranceOwner, insuranceDetails.quantity, insuranceDetails.securedAmount, insuranceCost);
