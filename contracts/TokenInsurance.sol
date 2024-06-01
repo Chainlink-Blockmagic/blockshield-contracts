@@ -20,6 +20,8 @@ import "./FunctionWithUpdateRequest.sol";
 import "./BlockshieldMessageSender.sol";
 import "./BlockshieldMessageReceiver.sol";
 
+import "hardhat/console.sol";
+
 contract TokenInsurance is
     ERC20,
     ERC20Burnable,
@@ -110,19 +112,21 @@ contract TokenInsurance is
         // _grantRole(ADMIN_ROLE, address(this));
     }
 
+    /// @notice The way in which the clients contract insurances
+    /// @param quantity_ Amount of tokens the client want to buy. 
     function hireInsurance(uint256 quantity_) external nonReentrant {
         if (transferTokenAddress == address(0)) revert ZeroAddress();
         require(vault != address(0), "vault is not set yet");
         require(tokenRWAInfo.isSet, "tokenRWAInfo is not set yet");
         require(quantity_ > 0, "Invalid quantity");
-        require(quantity_ <= tokenRWAInfo.totalSupply, "Quantity is greater than supply");
-        require(totalSupply() + quantity_ <= tokenRWAInfo.totalSupply, "Not suficient insurance in stock");
+        require(quantity_.toDecimals(decimals()) <= tokenRWAInfo.totalSupply, "Quantity is greater than supply");
+        require(totalSupply() + quantity_.toDecimals(decimals()) <= tokenRWAInfo.totalSupply, "Not suficient insurance in stock");
 
         // Calculate the required amount for insurance payment
-        uint256 requiredAmount_ = getRwaTotalValue(quantity_);
+        uint256 requiredTokenAmount_ = getRwaTotalValueInTokenTransferDecimals(quantity_);
 
         // Validate USDC amount
-        require(IERC20(transferTokenAddress).balanceOf(msg.sender) >= requiredAmount_, "Insufficient USDC");
+        require(IERC20(transferTokenAddress).balanceOf(msg.sender) >= requiredTokenAmount_, "Insufficient USDC");
         // TODO: check for possible maximum amount per user
 
         // Make CCIP call sending USDC from msg.sender and making a contract call
@@ -132,15 +136,15 @@ contract TokenInsurance is
             address(this),
             msg.sender,
             quantity_,
-            requiredAmount_
+            requiredTokenAmount_
         );
-        bytes32 messageId = sendMethodCallWithUSDC(vault, requiredAmount_, data);
+        bytes32 messageId = sendMethodCallWithUSDC(vault, requiredTokenAmount_, data);
 
         // Mint TokenInsurance desired amount of tokens to msg.sender
-        _mint(msg.sender, quantity_);
+        _mint(msg.sender, quantity_.toDecimals(decimals()));
         insuranceClients.push(msg.sender);
 
-        emit InsuranceHired(messageId, msg.sender, address(this), requiredAmount_);
+        emit InsuranceHired(messageId, msg.sender, address(this), requiredTokenAmount_);
     }
 
     function isDueDateArrived() internal view returns (bool) {
@@ -172,6 +176,10 @@ contract TokenInsurance is
         emit HandlePayment(messageId, tokenRWAInfo.securedAsset, liquidationResponse);
     }
 
+    function approve(address _transferTokenAddress, address _router, uint256 _amount) internal override {
+        IERC20(_transferTokenAddress).approve(address(_router), _amount);
+    }
+
     function updateTokenRWADetails(TokenRWAInfo calldata rwa) external onlyOwner {
         if (rwa.securedAsset == address(0)) revert ZeroAddress();
         tokenRWAInfo = rwa;
@@ -180,37 +188,43 @@ contract TokenInsurance is
     function payInsuranceClients() external {
         for (uint i = 0; i < insuranceClients.length; i++) {
             address currentInsuranceOwner = insuranceClients[i];
-            uint256 quantity = IERC20(address(this)).balanceOf(currentInsuranceOwner);
-            (uint256 totalValue, uint256 insuranceTotalCost) = getUserPaymentAmount(quantity);
+            uint256 tokeInsuranceBalance = IERC20(address(this)).balanceOf(currentInsuranceOwner);
+            uint256 tokeInsuranceBalanceToUint = tokeInsuranceBalance.toInteger(decimals());
+            uint256 totalValue = getRwaTotalValueInTokenTransferDecimals(tokeInsuranceBalanceToUint);
+            uint256 insuranceTotalCost = getUserPaymentAmountInTokenTransferDecimals(tokeInsuranceBalanceToUint);
             uint256 paymentValue = totalValue - insuranceTotalCost;
             IERC20(transferTokenAddress).safeTransfer(currentInsuranceOwner, paymentValue);
-            _burn(currentInsuranceOwner, quantity);
+            _burn(currentInsuranceOwner, tokeInsuranceBalance);
             emit UserPayment(address(this), currentInsuranceOwner, paymentValue, totalValue, insuranceTotalCost);
         }
     }
 
-    function getUserPaymentAmount(uint256 quantity) internal view returns (uint256, uint256) {
-        uint256 rwaUnitValue = getRwaUnitValue();
-        uint256 paymentTokenDecimals = getPaymentTokenDecimals();
-        uint256 insuranceUnitValue = rwaUnitValue * prime / 10 ** paymentTokenDecimals;
-        uint256 insuranceTotalCost = quantity * insuranceUnitValue / 10 ** paymentTokenDecimals;
-        uint256 totalValue = getRwaTotalValue(quantity);
-        return (totalValue, insuranceTotalCost);
+    function getUserPaymentAmountInTokenTransferDecimals(uint256 tokeInsuranceBalance_) public view returns (uint256 insuranceTotalCost) {
+        uint8 paymentTokenDecimals = getPaymentTokenDecimals();
+        uint256 rwaUnitValue = getRwaUnitValueInTokenTransferDecimals();
+
+        // Convert rwaUnitValue to 18 decimals
+        uint8 diffDecimals = decimals() - paymentTokenDecimals;
+        uint256 rwaUnitValueIn18Decimals = rwaUnitValue * 10**diffDecimals;
+
+        // Calculate the insurance unit value
+        uint256 insuranceUnitValue = (rwaUnitValueIn18Decimals * prime) / 10**decimals();
+
+        // Convert the result back to 6 decimals if needed
+        uint256 insuranceUnitValueIn6Decimals = insuranceUnitValue / 10**diffDecimals;
+
+        insuranceTotalCost = tokeInsuranceBalance_ * insuranceUnitValueIn6Decimals;
     }
 
-    function getRwaTotalValue(uint256 quantity) public view returns (uint256 totalValue) {
-        totalValue = getRwaUnitValue() * quantity / 10 ** getPaymentTokenDecimals();
-    }
-
-    function approve(address _transferTokenAddress, address _router, uint256 _amount) internal override {
-        IERC20(_transferTokenAddress).approve(address(_router), _amount);
-    }
-
-    function getRwaUnitValue() public view returns (uint256 unitValue) {
+    function getRwaUnitValueInTokenTransferDecimals() public view returns (uint256 unitValue) {
         unitValue = tokenRWAInfo.totalValue * 10 ** getPaymentTokenDecimals() / tokenRWAInfo.totalSupply;
     }
 
-    function getPaymentTokenDecimals() public view returns (uint256 unitValue) {
+    function getRwaTotalValueInTokenTransferDecimals(uint256 quantity) public view returns (uint256 totalValue) {
+        totalValue = getRwaUnitValueInTokenTransferDecimals() * quantity;
+    }
+
+    function getPaymentTokenDecimals() public view returns (uint8 unitValue) {
         return IERC20Metadata(transferTokenAddress).decimals();
     }
 

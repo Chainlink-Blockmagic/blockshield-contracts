@@ -136,13 +136,11 @@ contract Vault is
         bytes32 messageId = sendMethodCallWithUSDC(
             insuranceAddressByRwa[securedAsset],
             totalAmount,
-            abi.encode("")
+            abi.encodeWithSignature("payInsuranceClients()")
         );
 
-        // TODO: SEND CCIP CALL TO TOKEN INSURANCE PRA TokenInsurance#selfdestruct()
-
         emit InsuranceTotalPayment(
-            messageId, 
+            messageId,
             securedAsset,
             insuranceAddressByRwa[securedAsset],
             totalAmount
