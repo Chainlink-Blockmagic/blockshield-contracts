@@ -12,7 +12,6 @@ abstract contract FunctionWithUpdateRequest is
     FunctionsClient,
     ConfirmedOwner
 {
-    uint256 public lastBlockNumber;
     bytes public request;
     uint64 public subscriptionId;
     uint32 public gasLimit;
