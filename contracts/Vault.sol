@@ -27,18 +27,19 @@ contract Vault is
     /// @notice Map each secured RWA it correspondant insurance
     mapping(address => address) public insuranceAddressByRwa;
 
-    /// @notice Maps for each secured RWA an owner with insurance details
+    /// @notice Maps for each Insurance an owner with insurance details
     /// @dev This structure only allows to have one insurance per client per RWA
     mapping(address => mapping(address => InsuranceDetails)) public hiredInsurances;
 
     /// @notice Holds the total amount saved by RWA
     mapping(address => uint256) public amountByAsset;
 
-    /// @notice Map each secured RWA with a list of owners
-    mapping(address => address[]) public insuranceOwnersByAsset;
+    /// @notice Map each Insurance with a list of owners
+    mapping(address => address[]) public insuranceOwnersByInsuranceAddress;
 
     /// @notice Used to avoid insert a client twice
-    mapping(address => bool) public existsInsuranceClient;
+    /// @dev TokenRWA => TokenInsurance => InsuranceClient => bool
+    mapping(address => mapping(address => mapping(address => bool))) public existsInsuranceClient;
 
     struct InsuranceDetails {
         uint256 securedAmount; // value payed by the client
@@ -48,6 +49,7 @@ contract Vault is
     event InsurancePaid (address indexed securedAsset_, address indexed insuranceClient_, uint256 quantity_, uint256 securedAmount_, uint256 insuranceCost);
     event RWAYieldPaid (address indexed securedAsset_, address indexed insuranceClient_, uint256 quantity_, uint256 securedAmount_, uint256 insuranceCost);
     event InsuranceHiringAdded(address indexed securedAsset_, address indexed insuranceClient_, uint256 amount);
+    event InsuranceWithoutClients (address indexed securedAsset_);
     event InsuranceTotalPayment(
         bytes32 indexed messageId, // The unique ID of the CCIP message
         address indexed securedAsset_,
@@ -78,16 +80,16 @@ contract Vault is
         require(quantity_ > 0, "quantity_ cannot be zero");
         require(securedAmount_ > 0, "securedAmount_ cannot be zero");
 
-        if (!existsInsuranceClient[insuranceClient_]) {
-            insuranceOwnersByAsset[securedAsset_].push(insuranceClient_);
-            hiredInsurances[securedAsset_][insuranceClient_] = InsuranceDetails({ quantity: quantity_, securedAmount: securedAmount_ });
+        if (!existsInsuranceClient[securedAsset_][insuranceAddress_][insuranceClient_]) {
+            insuranceOwnersByInsuranceAddress[insuranceAddress_].push(insuranceClient_);
+            hiredInsurances[insuranceAddress_][insuranceClient_] = InsuranceDetails({ quantity: quantity_, securedAmount: securedAmount_ });
         } else {
-            InsuranceDetails storage insuranceDetails = hiredInsurances[securedAsset_][insuranceClient_];
+            InsuranceDetails storage insuranceDetails = hiredInsurances[insuranceAddress_][insuranceClient_];
             insuranceDetails.quantity += quantity_;
             insuranceDetails.securedAmount += securedAmount_;
         }
         insuranceAddressByRwa[securedAsset_] = insuranceAddress_;
-        existsInsuranceClient[insuranceClient_] = true;
+        existsInsuranceClient[securedAsset_][insuranceAddress_][insuranceClient_] = true;
         amountByAsset[securedAsset_] += securedAmount_;
 
         // TODO: Refactor to send CCIP message
@@ -114,41 +116,45 @@ contract Vault is
         payUser(securedAsset, true, insurancePrime);
     }
 
-    function payUser(address securedAsset, bool isInsuracePaid, uint256 insurancePrime) internal {
-        require(securedAsset != address(0), "insurance cannot be zero address");
-
-        address[] memory insuranceOwners = insuranceOwnersByAsset[securedAsset];
+    function payUser(address securedAsset_, bool isInsuracePaid, uint256 insurancePrime) internal {
+        require(securedAsset_ != address(0), "insurance cannot be zero address");
+        address insuranceAddress_ = insuranceAddressByRwa[securedAsset_];
+        address[] memory insuranceOwners = insuranceOwnersByInsuranceAddress[insuranceAddress_];
 
         uint256 totalAmount;
 
         for (uint i = 0; i < insuranceOwners.length; i++) {
             address currentInsuranceOwner = insuranceOwners[i];
 
-            InsuranceDetails memory insuranceDetails = hiredInsurances[securedAsset][currentInsuranceOwner];
-            uint256 insuranceCost = getTotalInsuranceCostInTokenTransferDecimals(securedAsset, insurancePrime, insuranceDetails.quantity);
+            InsuranceDetails memory insuranceDetails = hiredInsurances[insuranceAddress_][currentInsuranceOwner];
+            uint256 insuranceCost = getTotalInsuranceCostInTokenTransferDecimals(securedAsset_, insurancePrime, insuranceDetails.quantity);
 
             uint256 amountToTransfer;
             if (isInsuracePaid) amountToTransfer = insuranceDetails.securedAmount - insuranceCost;
-            else amountToTransfer = (insuranceDetails.quantity * ITokenRWA(securedAsset).calculateRWAValuePlusYield()) - insuranceCost;
+            else amountToTransfer = (insuranceDetails.quantity * ITokenRWA(securedAsset_).calculateRWAValuePlusYield()) - insuranceCost;
 
             totalAmount += amountToTransfer;
 
-            if (isInsuracePaid) emit InsurancePaid(securedAsset, currentInsuranceOwner, insuranceDetails.quantity, insuranceDetails.securedAmount, insuranceCost);
-            else emit RWAYieldPaid(securedAsset, currentInsuranceOwner, insuranceDetails.quantity, insuranceDetails.securedAmount, insuranceCost);
+            if (isInsuracePaid) emit InsurancePaid(securedAsset_, currentInsuranceOwner, insuranceDetails.quantity, insuranceDetails.securedAmount, insuranceCost);
+            else emit RWAYieldPaid(securedAsset_, currentInsuranceOwner, insuranceDetails.quantity, insuranceDetails.securedAmount, insuranceCost);
         }
 
-        bytes32 messageId = sendMessage(
-            insuranceAddressByRwa[securedAsset],
-            totalAmount,
-            abi.encodeWithSignature("payInsuranceClients()")
-        );
+        if (insuranceOwners.length > 0) {
+            bytes32 messageId = sendMessage(
+                insuranceAddress_,
+                totalAmount,
+                abi.encodeWithSignature("payInsuranceClients()")
+            );
 
-        emit InsuranceTotalPayment(
-            messageId,
-            securedAsset,
-            insuranceAddressByRwa[securedAsset],
-            totalAmount
-        );
+            emit InsuranceTotalPayment(
+                messageId,
+                securedAsset_,
+                insuranceAddress_,
+                totalAmount
+            );
+        } else {
+            emit InsuranceWithoutClients(securedAsset_);
+        }
     }
 
     function getTotalInsuranceCostInTokenTransferDecimals(

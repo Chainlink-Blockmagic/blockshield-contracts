@@ -3,7 +3,7 @@ const { expect } = require("chai");
 const { parseEther, parseUnits, ZeroAddress } = require("ethers");
 
 const contracts = {
-  VAULT: "Vault",
+  MOCK_VAULT: "MockVault",
   TOKEN_RWA: "TokenRWA",
   MOCK_USDC: "MockUSDC",
 };
@@ -40,38 +40,38 @@ describe("Vault", function () {
     describe('error scenarios', async () => {
       it("Should revert if securedAsset_ is zero address", async () => {
         const { vaultContractAddress } = await loadFixture(deployProtocol);
-        const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
+        const vaultContract = await ethers.getContractAt(contracts.MOCK_VAULT, vaultContractAddress);
         await expect(vaultContract.addHiredInsurance(ZeroAddress, ZeroAddress, ZeroAddress, 0, 0))
         .to.be.revertedWith("securedAsset_ cannot be zero address");
       });
       it("Should revert if insuranceAddress_ is zero address", async () => {
         const { vaultContractAddress, tokenRWAContractAddress } = await loadFixture(deployProtocol);
-        const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
+        const vaultContract = await ethers.getContractAt(contracts.MOCK_VAULT, vaultContractAddress);
         await expect(vaultContract.addHiredInsurance(tokenRWAContractAddress, ZeroAddress, ZeroAddress, 0, 0))
         .to.be.revertedWith("insuranceAddress_ cannot be zero address");
       });
       it("Should revert if insuranceClient_ is zero address", async () => {
         const { vaultContractAddress, tokenRWAContractAddress, tokenInsuranceContractAddress } = await loadFixture(deployProtocol);
-        const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
+        const vaultContract = await ethers.getContractAt(contracts.MOCK_VAULT, vaultContractAddress);
         await expect(vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, ZeroAddress, 0, 0))
         .to.be.revertedWith("insuranceClient_ cannot be zero address");
       });
       it("Should revert if quantity_ is zero value", async () => {
         const { vaultContractAddress, tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
-        const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
+        const vaultContract = await ethers.getContractAt(contracts.MOCK_VAULT, vaultContractAddress);
         await expect(vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address, 0, 0))
         .to.be.revertedWith("quantity_ cannot be zero");
       });
       it("Should revert if securedAmount_ is zero value", async () => {
         const { vaultContractAddress, tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
-        const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
+        const vaultContract = await ethers.getContractAt(contracts.MOCK_VAULT, vaultContractAddress);
         await expect(vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address, parseEther("1"), 0))
         .to.be.revertedWith("securedAmount_ cannot be zero");
       });
       it("Should revert if vault has no admin access to TokenRWA", async () => {
         const { vaultContractAddress, tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
         const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
-        const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
+        const vaultContract = await ethers.getContractAt(contracts.MOCK_VAULT, vaultContractAddress);
         await expect(vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address, parseEther("1"), parseEther("100")))
         .to.be.revertedWithCustomError(tokenRWAContract, "AccessControlUnauthorizedAccount");
       });
@@ -84,11 +84,11 @@ describe("Vault", function () {
         const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
         await tokenRWAContract.grantAdminRole(vaultContractAddress);
 
-        const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
+        const vaultContract = await ethers.getContractAt(contracts.MOCK_VAULT, vaultContractAddress);
         let existsInsuranceClient;
 
         // Check if client exists
-        existsInsuranceClient = await vaultContract.existsInsuranceClient(protocolAdmin.address);
+        existsInsuranceClient = await vaultContract.existsInsuranceClient(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address);
         expect(existsInsuranceClient).to.false;
 
         // Add hire record
@@ -97,13 +97,13 @@ describe("Vault", function () {
         await vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address, QUANTITY, SECURED_AMOUNT);
 
         // Get insurance details
-        const hiredInsurances = await vaultContract.hiredInsurances(tokenRWAContractAddress, protocolAdmin.address);
+        const hiredInsurances = await vaultContract.hiredInsurances(tokenInsuranceContractAddress, protocolAdmin.address);
         const [securedAmount, quantity] = hiredInsurances;
         expect(securedAmount).to.equal(SECURED_AMOUNT);
         expect(quantity).to.equal(QUANTITY);
 
         // Check if client exists
-        existsInsuranceClient = await vaultContract.existsInsuranceClient(protocolAdmin.address);
+        existsInsuranceClient = await vaultContract.existsInsuranceClient(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address);
         expect(existsInsuranceClient).to.true;
 
         // Check amount holded by asset
@@ -117,11 +117,11 @@ describe("Vault", function () {
         const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
         await tokenRWAContract.grantAdminRole(vaultContractAddress);
         
-        const vaultContract = await ethers.getContractAt(contracts.VAULT, vaultContractAddress);
+        const vaultContract = await ethers.getContractAt(contracts.MOCK_VAULT, vaultContractAddress);
         let existsInsuranceClient;
 
         // Check if client exists
-        existsInsuranceClient = await vaultContract.existsInsuranceClient(protocolAdmin.address);
+        existsInsuranceClient = await vaultContract.existsInsuranceClient(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address);
         expect(existsInsuranceClient).to.false;
 
         // Add hire record
@@ -130,14 +130,14 @@ describe("Vault", function () {
         await vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address, QUANTITY, SECURED_AMOUNT);
         
         // Check if client exists
-        existsInsuranceClient = await vaultContract.existsInsuranceClient(protocolAdmin.address);
+        existsInsuranceClient = await vaultContract.existsInsuranceClient(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address);
         expect(existsInsuranceClient).to.true;
 
         // Add hire record
         await vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address, QUANTITY, SECURED_AMOUNT);
 
         // Get insurance details
-        const hiredInsurances = await vaultContract.hiredInsurances(tokenRWAContractAddress, protocolAdmin.address);
+        const hiredInsurances = await vaultContract.hiredInsurances(tokenInsuranceContractAddress, protocolAdmin.address);
         const [securedAmount, quantity] = hiredInsurances;
         
         const TOTAL_AMOUNT = parseUnits("200", 6);
@@ -145,13 +145,30 @@ describe("Vault", function () {
         expect(quantity).to.equal(2);
 
         // Check if client exists
-        existsInsuranceClient = await vaultContract.existsInsuranceClient(protocolAdmin.address);
+        existsInsuranceClient = await vaultContract.existsInsuranceClient(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address);
         expect(existsInsuranceClient).to.true;
 
         // Check amount holded by asset
         const amountByAsset = await vaultContract.amountByAsset(tokenRWAContractAddress);
         expect(amountByAsset).to.equal(TOTAL_AMOUNT);
       });
+    });
+  });
+
+  describe.only("\n Handle RWA Payment", function () {
+    it("Should handle payment correctly", async () => {
+      const { vaultContractAddress, tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
+
+      // Grant TokenRWA Admin access to Vault
+      const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
+      await tokenRWAContract.grantAdminRole(vaultContractAddress);
+      
+      const vaultContract = await ethers.getContractAt(contracts.MOCK_VAULT, vaultContractAddress);
+
+      const LIQUIDATION_RESPONSE = false;
+      await expect(vaultContract.handleRWAPayment(LIQUIDATION_RESPONSE, tokenRWAContractAddress, parseEther("0.05")))
+      .to.emit(vaultContract, "InsuranceWithoutClients")
+      .withArgs(tokenRWAContractAddress);
     });
   });
   const deployTokenRWA = async ({ mockUSDCContractAddress }) => {
@@ -175,7 +192,7 @@ describe("Vault", function () {
 
   const deployVault = async () => {
     console.log(" --- Deploying Vault contract --- ");
-    const Vault = await ethers.getContractFactory(contracts.VAULT);
+    const Vault = await ethers.getContractFactory(contracts.MOCK_VAULT);
     const vaultContract = await Vault.deploy(ROUTER_CCIP_ID_OPTIMISM_SEPOLIA);
     const vaultContractAddress = await vaultContract.getAddress();
     console.log(`Vault address: ${vaultContractAddress}`);
@@ -190,4 +207,5 @@ describe("Vault", function () {
     console.log(`MockUSDC address: ${mockUSDCContract}`);
     return mockUSDCContractAddress;
   };
+
 });
