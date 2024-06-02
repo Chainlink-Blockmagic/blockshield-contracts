@@ -129,6 +129,10 @@ contract TokenInsurance is
         require(IERC20(transferTokenAddress).balanceOf(msg.sender) >= requiredTokenAmount_, "Insufficient USDC");
         // TODO: check for possible maximum amount per user
 
+        // Take control of msg.sender USDC
+        // Send tokens to vault
+        IERC20(transferTokenAddress).safeTransferFrom(msg.sender, address(this), requiredTokenAmount_);
+
         // Make CCIP call sending USDC from msg.sender and making a contract call
         bytes memory data = abi.encodeWithSignature(
             "addHiredInsurance(address,address,address,uint256,uint256)",
