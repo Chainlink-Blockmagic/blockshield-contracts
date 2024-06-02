@@ -164,13 +164,20 @@ describe("TokenRWA", function () {
         const { tokenRWAContractAddress } = await loadFixture(deployProtocol);
         const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
   
+        const tokenRWADecimals = await tokenRWAContract.decimals();
         const tokenRWAYield = await tokenRWAContract.yield();
         const tokenRWAUnitValue = await tokenRWAContract.getRwaUnitValueInTokenTransferDecimals();
         const decimals = await tokenRWAContract.getPaymentTokenDecimals();
 
-        const yieldAmount = await tokenRWAContract.calculateRWAValuePlusYield();
-        const expectedYieldAmount = BigNumber(tokenRWAUnitValue).multipliedBy(tokenRWAYield).div(BigNumber(10).pow(decimals));
-        expect(yieldAmount).to.equal(BigNumber(tokenRWAUnitValue).plus(expectedYieldAmount)); // Unit value plus yield
+        const diffDecimals = BigNumber(tokenRWADecimals).minus(decimals);
+        const rwaUnitValueIn18Decimals = BigNumber(tokenRWAUnitValue).multipliedBy(BigNumber(10).pow(diffDecimals));
+        const yieldUnitValue = BigNumber(rwaUnitValueIn18Decimals).multipliedBy(tokenRWAYield).div(BigNumber(10).pow(tokenRWADecimals));
+        const yieldUnitValueIn6Decimals = BigNumber(yieldUnitValue).div(BigNumber(10).pow(diffDecimals));
+        const expectedYieldAppliedIn6Decimals = BigNumber(yieldUnitValueIn6Decimals).plus(tokenRWAUnitValue);
+        
+        const actualYieldAppliedIn6Decimals = await tokenRWAContract.calculateRWAValuePlusYieldInTokenTransferDecimals();
+
+        expect(actualYieldAppliedIn6Decimals).to.equal(expectedYieldAppliedIn6Decimals); // Unit value plus yield
       });
       it("Should deploy token RWA with a correct yield", async () => {
         const mockUSDCContractAddress = await deployMockUsdc();
