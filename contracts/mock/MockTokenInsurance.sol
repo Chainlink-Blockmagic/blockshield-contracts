@@ -16,7 +16,7 @@ contract MockTokenInsurance is TokenInsurance {
       address aggregatorNetwork_
     ) TokenInsurance(name_, symbol_, prime_, routerFunctions_, routerCCIP_, aggregatorNetwork_) {}
 
-    function sendMethodCallWithUSDC(
+    function sendMessage(
         address,
         uint256,
         bytes memory

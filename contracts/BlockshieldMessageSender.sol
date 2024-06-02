@@ -56,32 +56,19 @@ abstract contract BlockshieldMessageSender {
     /// @param _destinationReceiverAddress The destination address of the contract receiving the message
     /// @param _amount The amount to send on message
     /// @param _data The encodedWithSignature method and their parameters
-    function sendMethodCallWithUSDC(
+    function sendMessage(
         address _destinationReceiverAddress, 
         uint256 _amount,
         bytes memory _data
     ) internal virtual returns (bytes32) {
         if (_destinationReceiverAddress == address(0)) revert ZeroAddress();
-        Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
 
+        Client.EVM2AnyMessage memory message;
         if (_amount > 0) {
-            Client.EVMTokenAmount memory tokenAmount = Client.EVMTokenAmount({
-                token: transferTokenAddress,
-                amount: _amount
-            });
-            tokenAmounts[0] = tokenAmount;
+            message = _buildCCIPOnlyMessage(_destinationReceiverAddress, _data);
+        } else {
+            message = _buildCCIPMessageWithUSDC(_destinationReceiverAddress, _data, _amount);
         }
-
-        Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
-            receiver: abi.encode(_destinationReceiverAddress),
-            data: _data,
-            tokenAmounts: tokenAmounts,
-            extraArgs: Client._argsToBytes(
-                Client.EVMExtraArgsV1({ gasLimit: 980_000 })
-            ),
-            feeToken: address(linkToken)
-        });
-
         uint256 fees = router.getFee(destinationChainSelector, message);
 
         if (fees > linkToken.balanceOf(address(this)))
@@ -89,8 +76,9 @@ abstract contract BlockshieldMessageSender {
         
         linkToken.approve(routerAddress, fees);
 
-        approve(transferTokenAddress, address(router), _amount);
-
+        if (_amount > 0) {
+            approve(transferTokenAddress, address(router), _amount);
+        }
         bytes32 messageId = router.ccipSend(destinationChainSelector, message);
         
         emit MessageSent(
@@ -104,6 +92,61 @@ abstract contract BlockshieldMessageSender {
         );
 
         return messageId;
+    }
+
+    /// @notice Construct a CCIP message.
+    /// @dev This function will create an EVM2AnyMessage struct with all the necessary information for sending a text.
+    /// @param _receiver The address of the receiver.
+    /// @param _data The string data to be sent.
+    /// @return Client.EVM2AnyMessage Returns an EVM2AnyMessage struct which contains information for sending a CCIP message.
+    function _buildCCIPOnlyMessage(
+        address _receiver,
+        bytes memory _data
+    ) private view returns (Client.EVM2AnyMessage memory) {
+        // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
+        return
+            Client.EVM2AnyMessage({
+                receiver: abi.encode(_receiver), // ABI-encoded receiver address
+                data: _data, // ABI-encoded string
+                tokenAmounts: new Client.EVMTokenAmount[](0), // Empty array aas no tokens are transferred
+                extraArgs: Client._argsToBytes(
+                    // Additional arguments, setting gas limit
+                    Client.EVMExtraArgsV1({ gasLimit: 200_000 })
+                ),
+                // Set the feeToken to a feeTokenAddress, indicating specific asset will be used for fees
+                feeToken: address(linkToken)
+            });
+    }
+
+    /// @notice Construct a CCIP message.
+    /// @dev This function will create an EVM2AnyMessage struct with all the necessary information for sending a text.
+    /// @param _destinationReceiverAddress The destination address of the contract receiving the message
+    /// @param _data The method signature call encoded with parameters.
+    /// @param _amount The amount of tokens to be sent
+    /// @return Client.EVM2AnyMessage Returns an EVM2AnyMessage struct which contains information for sending a CCIP message.
+    function _buildCCIPMessageWithUSDC(
+        address _destinationReceiverAddress,
+        bytes memory _data,
+        uint256 _amount
+    ) private view returns (Client.EVM2AnyMessage memory) {
+        // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
+        Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
+        // Add array item
+        Client.EVMTokenAmount memory tokenAmount = Client.EVMTokenAmount({
+            token: transferTokenAddress,
+            amount: _amount
+        });
+        tokenAmounts[0] = tokenAmount;
+
+        return Client.EVM2AnyMessage({
+            receiver: abi.encode(_destinationReceiverAddress),
+            data: _data,
+            tokenAmounts: tokenAmounts,
+            extraArgs: Client._argsToBytes(
+                Client.EVMExtraArgsV1({ gasLimit: 980_000 })
+            ),
+            feeToken: address(linkToken)
+        });
     }
 
     /// @dev Configure the destination chain properties

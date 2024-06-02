@@ -137,7 +137,7 @@ contract Vault is
             else emit RWAYieldPaid(securedAsset, currentInsuranceOwner, insuranceDetails.quantity, insuranceDetails.securedAmount, insuranceCost);
         }
 
-        bytes32 messageId = sendMethodCallWithUSDC(
+        bytes32 messageId = sendMessage(
             insuranceAddressByRwa[securedAsset],
             totalAmount,
             abi.encodeWithSignature("payInsuranceClients()")
