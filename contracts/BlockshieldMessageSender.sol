@@ -65,9 +65,9 @@ abstract contract BlockshieldMessageSender {
 
         Client.EVM2AnyMessage memory message;
         if (_amount > 0) {
-            message = _buildCCIPOnlyMessage(_destinationReceiverAddress, _data);
-        } else {
             message = _buildCCIPMessageWithUSDC(_destinationReceiverAddress, _data, _amount);
+        } else {
+            message = _buildCCIPOnlyMessage(_destinationReceiverAddress, _data);
         }
         uint256 fees = router.getFee(destinationChainSelector, message);
 
