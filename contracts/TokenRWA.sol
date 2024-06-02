@@ -45,12 +45,17 @@ contract TokenRWA is ERC20, ERC20Burnable, AccessControl {
         _mint(address(this), totalSupply_);
     }
 
-    function calculateRWAValuePlusYield() external view returns (uint256) {
-        uint256 unitValue = getRwaUnitValue();
-        return unitValue + (unitValue * yield / 10 ** getPaymentTokenDecimals());
+    function calculateRWAValuePlusYieldInTokenTransferDecimals() external view returns (uint256 yieldAppliedIn6Decimals) {
+        uint8 paymentTokenDecimals = getPaymentTokenDecimals();
+        uint256 rwaUnitValue = getRwaUnitValueInTokenTransferDecimals();
+        uint8 diffDecimals = decimals() - paymentTokenDecimals;
+        uint256 rwaUnitValueIn18Decimals = rwaUnitValue * 10**diffDecimals;
+        uint256 yieldUnitValue = (rwaUnitValueIn18Decimals * yield) / 10**decimals();
+        uint256 yieldUnitValueIn6Decimals = yieldUnitValue / 10**diffDecimals;
+        yieldAppliedIn6Decimals = yieldUnitValueIn6Decimals + rwaUnitValue;
     }
 
-    function getRwaUnitValue() public view returns (uint256 unitValue) {
+    function getRwaUnitValueInTokenTransferDecimals() public view returns (uint256 unitValue) {
         unitValue = (totalValue * 10 ** getPaymentTokenDecimals()) / totalSupply();
     }
 

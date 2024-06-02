@@ -20,8 +20,6 @@ import "./FunctionWithUpdateRequest.sol";
 import "./BlockshieldMessageSender.sol";
 import "./BlockshieldMessageReceiver.sol";
 
-import "hardhat/console.sol";
-
 contract TokenInsurance is
     ERC20,
     ERC20Burnable,
@@ -142,7 +140,7 @@ contract TokenInsurance is
             quantity_,
             requiredTokenAmount_
         );
-        bytes32 messageId = sendMethodCallWithUSDC(vault, requiredTokenAmount_, data);
+        bytes32 messageId = sendMessage(vault, requiredTokenAmount_, data);
 
         // Mint TokenInsurance desired amount of tokens to msg.sender
         _mint(msg.sender, quantity_.toDecimals(decimals()));
@@ -176,7 +174,7 @@ contract TokenInsurance is
             tokenRWAInfo.securedAsset,
             prime
         );
-        bytes32 messageId = sendMethodCallWithUSDC(vault, 0, data);
+        bytes32 messageId = sendMessage(vault, 0, data);
         emit HandlePayment(messageId, tokenRWAInfo.securedAsset, liquidationResponse);
     }
 
@@ -260,5 +258,9 @@ contract TokenInsurance is
         if (amount == 0) revert NothingToWithdraw();
 
         IERC20(_token).safeTransfer(_beneficiary, amount);
+    }
+
+    function setAlreadyExecuted(bool flag) external onlyOwner {
+        alreadyExecuted = flag;
     }
 }
