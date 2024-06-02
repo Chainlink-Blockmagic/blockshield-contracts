@@ -32,13 +32,23 @@ abstract contract BlockshieldMessageReceiver is CCIPReceiver {
         require(_router != address(0), "BlockshieldMessageReceiver: _router cannot be zero");
     }
 
-    function _ccipReceive(Client.Any2EVMMessage memory message) internal override {
+    function _ccipReceive(
+        Client.Any2EVMMessage memory message
+    )
+        internal
+        override
+    {
         s_lastReceivedMessageId = message.messageId;
 
         (bool success, ) = address(this).call(message.data);
 
-        s_lastReceivedTokenAddress = message.destTokenAmounts[0].token;
-        s_lastReceivedTokenAmount = message.destTokenAmounts[0].amount;
+        if (message.destTokenAmounts.length > 0) {
+            s_lastReceivedTokenAddress = message.destTokenAmounts[0].token;
+            s_lastReceivedTokenAmount = message.destTokenAmounts[0].amount;
+        } else {
+            s_lastReceivedTokenAddress = address(0);
+            s_lastReceivedTokenAmount = 0;
+        }
 
         if (success) {
             emit MessageReceived(

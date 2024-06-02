@@ -1,6 +1,6 @@
 const { loadFixture } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { expect } = require("chai");
-const { parseEther, parseUnits, keccak256, toUtf8Bytes, ZeroAddress, solidityPackedKeccak256, formatUnits } = require("ethers");
+const { parseEther, parseUnits, keccak256, toUtf8Bytes, ZeroAddress, solidityPackedKeccak256 } = require("ethers");
 const { BigNumber } = require('bignumber.js');
 
 const contracts = {
@@ -149,7 +149,12 @@ describe("TokenInsurance", function () {
       it("Should revert if quantity_ plus current TokenInsurance supply is greater than RWA total supply", async () => {
         const { tokenInsuranceContractAddress, mockUSDCContractAddress, protocolAdmin } = await loadFixture(deployProtocolWithTokenInsuranceSetup);
 
+
         await mintUSDCToAddress({ mockUSDCContractAddress, address: protocolAdmin.address, amount: parseUnits("1000000", 6) });
+        const mockUSDCContract = await ethers.getContractAt(contracts.MOCK_USDC, mockUSDCContractAddress);
+
+        await mockUSDCContract.approve(tokenInsuranceContractAddress, parseUnits("1000000", 6));
+
         const tokenInsuranceContract = await ethers.getContractAt(contracts.MOCK_TOKEN_INSURANCE, tokenInsuranceContractAddress);
 
         // To hire insurance for RWA Total Supply it will need a million of USDC
@@ -171,6 +176,8 @@ describe("TokenInsurance", function () {
         const { tokenInsuranceContractAddress, protocolAdmin, mockUSDCContractAddress } = await loadFixture(deployProtocolWithTokenInsuranceSetup);
         const tokenInsuranceContract = await ethers.getContractAt(contracts.MOCK_TOKEN_INSURANCE, tokenInsuranceContractAddress);
         await mintUSDCToAddress({ mockUSDCContractAddress, address: protocolAdmin.address, amount: parseUnits("100", 6) });
+        const mockUSDCContract = await ethers.getContractAt(contracts.MOCK_USDC, mockUSDCContractAddress);
+        await mockUSDCContract.approve(tokenInsuranceContractAddress, parseUnits("100", 6));
         await expect(tokenInsuranceContract.hireInsurance(1))
         .to.changeTokenBalances(
           tokenInsuranceContract,
@@ -182,6 +189,8 @@ describe("TokenInsurance", function () {
         const { tokenInsuranceContractAddress, protocolAdmin, mockUSDCContractAddress } = await loadFixture(deployProtocolWithTokenInsuranceSetup);
         const tokenInsuranceContract = await ethers.getContractAt(contracts.MOCK_TOKEN_INSURANCE, tokenInsuranceContractAddress);
         await mintUSDCToAddress({ mockUSDCContractAddress, address: protocolAdmin.address, amount: parseUnits("100", 6) });
+        const mockUSDCContract = await ethers.getContractAt(contracts.MOCK_USDC, mockUSDCContractAddress);
+        await mockUSDCContract.approve(tokenInsuranceContractAddress, parseUnits("100", 6));
         const QUANTITY = 1;
         const requiredAmount = await tokenInsuranceContract.getRwaTotalValueInTokenTransferDecimals(QUANTITY);
         await expect(tokenInsuranceContract.hireInsurance(QUANTITY))
@@ -311,6 +320,8 @@ describe("TokenInsurance", function () {
 
       await mintUSDCToAddress({ mockUSDCContractAddress, address: tokenInsuranceContractAddress, amount: parseUnits("100", 6) });
       await mintUSDCToAddress({ mockUSDCContractAddress, address: protocolAdmin.address, amount: parseUnits("100", 6) });
+      
+      await mockUSDCContract.approve(tokenInsuranceContractAddress, parseUnits("100", 6));
 
       const tx_hireInsurance = await tokenInsuranceContract.hireInsurance(1);
       await tx_hireInsurance.wait();
@@ -327,6 +338,8 @@ describe("TokenInsurance", function () {
 
       await mintUSDCToAddress({ mockUSDCContractAddress, address: tokenInsuranceContractAddress, amount: parseUnits("100", 6) });
       await mintUSDCToAddress({ mockUSDCContractAddress, address: protocolAdmin.address, amount: parseUnits("100", 6) });
+      const mockUSDCContract = await ethers.getContractAt(contracts.MOCK_USDC, mockUSDCContractAddress);
+      await mockUSDCContract.approve(tokenInsuranceContractAddress, parseUnits("100", 6));
 
       const tx_hireInsurance = await tokenInsuranceContract.hireInsurance(1);
       await tx_hireInsurance.wait();
@@ -343,6 +356,8 @@ describe("TokenInsurance", function () {
 
       await mintUSDCToAddress({ mockUSDCContractAddress, address: tokenInsuranceContractAddress, amount: parseUnits("100", 6) });
       await mintUSDCToAddress({ mockUSDCContractAddress, address: protocolAdmin.address, amount: parseUnits("100", 6) });
+      const mockUSDCContract = await ethers.getContractAt(contracts.MOCK_USDC, mockUSDCContractAddress);
+      await mockUSDCContract.approve(tokenInsuranceContractAddress, parseUnits("100", 6));
 
       const QUANTITY = 1;
       const tx_hireInsurance = await tokenInsuranceContract.hireInsurance(QUANTITY);
