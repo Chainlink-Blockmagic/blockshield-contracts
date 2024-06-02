@@ -92,13 +92,15 @@ describe("Vault", function () {
         expect(existsInsuranceClient).to.false;
 
         // Add hire record
-        await vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address, parseEther("1"), parseEther("100"));
+        const QUANTITY = 1;
+        const SECURED_AMOUNT = parseUnits("100", 6);
+        await vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address, QUANTITY, SECURED_AMOUNT);
 
         // Get insurance details
         const hiredInsurances = await vaultContract.hiredInsurances(tokenRWAContractAddress, protocolAdmin.address);
         const [securedAmount, quantity] = hiredInsurances;
-        expect(securedAmount).to.equal(parseEther("100"));
-        expect(quantity).to.equal(parseEther("1"));
+        expect(securedAmount).to.equal(SECURED_AMOUNT);
+        expect(quantity).to.equal(QUANTITY);
 
         // Check if client exists
         existsInsuranceClient = await vaultContract.existsInsuranceClient(protocolAdmin.address);
@@ -106,7 +108,7 @@ describe("Vault", function () {
 
         // Check amount holded by asset
         const amountByAsset = await vaultContract.amountByAsset(tokenRWAContractAddress);
-        expect(amountByAsset).to.equal(parseEther("100"));
+        expect(amountByAsset).to.equal(SECURED_AMOUNT);
       });
       it("Should update hire record after buying more than once", async () => {
         const { vaultContractAddress, tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
@@ -123,20 +125,24 @@ describe("Vault", function () {
         expect(existsInsuranceClient).to.false;
 
         // Add hire record
-        await vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address, parseEther("1"), parseEther("100"));
+        const QUANTITY = 1;
+        const SECURED_AMOUNT = parseUnits("100", 6);
+        await vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address, QUANTITY, SECURED_AMOUNT);
         
         // Check if client exists
         existsInsuranceClient = await vaultContract.existsInsuranceClient(protocolAdmin.address);
         expect(existsInsuranceClient).to.true;
 
         // Add hire record
-        await vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address, parseEther("1"), parseEther("100"));
+        await vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address, QUANTITY, SECURED_AMOUNT);
 
         // Get insurance details
         const hiredInsurances = await vaultContract.hiredInsurances(tokenRWAContractAddress, protocolAdmin.address);
         const [securedAmount, quantity] = hiredInsurances;
-        expect(securedAmount).to.equal(parseEther("200"));
-        expect(quantity).to.equal(parseEther("2"));
+        
+        const TOTAL_AMOUNT = parseUnits("200", 6);
+        expect(securedAmount).to.equal(TOTAL_AMOUNT);
+        expect(quantity).to.equal(2);
 
         // Check if client exists
         existsInsuranceClient = await vaultContract.existsInsuranceClient(protocolAdmin.address);
@@ -144,7 +150,7 @@ describe("Vault", function () {
 
         // Check amount holded by asset
         const amountByAsset = await vaultContract.amountByAsset(tokenRWAContractAddress);
-        expect(amountByAsset).to.equal(parseEther("200"));
+        expect(amountByAsset).to.equal(TOTAL_AMOUNT);
       });
     });
   });
