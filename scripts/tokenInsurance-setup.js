@@ -65,6 +65,8 @@ async function main() {
 };
 
 const sendLinkToTokenInsurance = async ({ signer}) => {
+  const LINK_ADDRESS = SOURCE_CHAIN_CCIP_DETAILS[hre.network.name].LINK_ADDRESS;
+  const linkContract = new ethers.Contract(LINK_ADDRESS, linkAbi, signer);
   // Send LINK tokens to TokenInsurance 
   console.log(" --- Sending 0.1 LINK to TokenInsurance --- ");
   const tx = await linkContract.transfer(TOKEN_INSURANCE_ADDRESS, parseEther("0.1"));
@@ -74,8 +76,6 @@ const sendLinkToTokenInsurance = async ({ signer}) => {
   console.log(`TokenInsurance balance: ${formatEther(tokenInsuranceBalance)} LINK`);
 
   console.log(" --- Check LINK balance of signer --- ");
-  const LINK_ADDRESS = SOURCE_CHAIN_CCIP_DETAILS[hre.network.name].LINK_ADDRESS;
-  const linkContract = new ethers.Contract(LINK_ADDRESS, linkAbi, signer);
   const signerBalance = await linkContract.balanceOf(signer.address);
   console.log(`Signer balance: ${formatEther(signerBalance)} LINK`);
 };

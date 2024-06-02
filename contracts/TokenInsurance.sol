@@ -191,7 +191,7 @@ contract TokenInsurance is
             uint256 tokeInsuranceBalance = IERC20(address(this)).balanceOf(currentInsuranceOwner);
             uint256 tokeInsuranceBalanceToUint = tokeInsuranceBalance.toInteger(decimals());
             uint256 totalValue = getRwaTotalValueInTokenTransferDecimals(tokeInsuranceBalanceToUint);
-            uint256 insuranceTotalCost = getUserPaymentAmountInTokenTransferDecimals(tokeInsuranceBalanceToUint);
+            uint256 insuranceTotalCost = getTotalInsuranceCostInTokenTransferDecimals(tokeInsuranceBalanceToUint);
             uint256 paymentValue = totalValue - insuranceTotalCost;
             IERC20(transferTokenAddress).safeTransfer(currentInsuranceOwner, paymentValue);
             _burn(currentInsuranceOwner, tokeInsuranceBalance);
@@ -199,7 +199,7 @@ contract TokenInsurance is
         }
     }
 
-    function getUserPaymentAmountInTokenTransferDecimals(uint256 tokeInsuranceBalance_) public view returns (uint256 insuranceTotalCost) {
+    function getTotalInsuranceCostInTokenTransferDecimals(uint256 tokeInsuranceBalanceToUint_) public view returns (uint256 insuranceTotalCost) {
         uint8 paymentTokenDecimals = getPaymentTokenDecimals();
         uint256 rwaUnitValue = getRwaUnitValueInTokenTransferDecimals();
 
@@ -213,7 +213,8 @@ contract TokenInsurance is
         // Convert the result back to 6 decimals if needed
         uint256 insuranceUnitValueIn6Decimals = insuranceUnitValue / 10**diffDecimals;
 
-        insuranceTotalCost = tokeInsuranceBalance_ * insuranceUnitValueIn6Decimals;
+        // Total cost
+        insuranceTotalCost = tokeInsuranceBalanceToUint_ * insuranceUnitValueIn6Decimals;
     }
 
     function getRwaUnitValueInTokenTransferDecimals() public view returns (uint256 unitValue) {

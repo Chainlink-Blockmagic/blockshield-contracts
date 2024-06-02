@@ -5,6 +5,8 @@ pragma solidity ^0.8.24;
 // import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
+import "./libraries/PercentageUtils.sol";
 import "./interfaces/ITokenInsurance.sol";
 import "./interfaces/ITokenRWA.sol";
 import "./BlockshieldMessageSender.sol";
@@ -17,6 +19,7 @@ contract Vault is
     BlockshieldMessageReceiver {
 
     using SafeERC20 for IERC20;
+    using PercentageUtils for uint256;
 
     // /// @dev Access control constants
     // bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
@@ -89,10 +92,11 @@ contract Vault is
 
         // TODO: Refactor to send CCIP message
         // Allow TokenInsurance to spend TokenRWA balance in its behalf
-        ITokenRWA(securedAsset_).allowSpendTokens(address(this), quantity_);
+        uint256 tokenBalance = quantity_.toDecimals(ITokenRWA(securedAsset_).decimals());
+        ITokenRWA(securedAsset_).allowSpendTokens(address(this), tokenBalance);
 
         // Transfer tokens from TokenRWA to Vault
-        IERC20(securedAsset_).safeTransferFrom(securedAsset_, address(this), quantity_);
+        IERC20(securedAsset_).safeTransferFrom(securedAsset_, address(this), tokenBalance);
 
         emit InsuranceHiringAdded(securedAsset_, insuranceClient_, securedAmount_);
     }
@@ -121,7 +125,7 @@ contract Vault is
             address currentInsuranceOwner = insuranceOwners[i];
 
             InsuranceDetails memory insuranceDetails = hiredInsurances[securedAsset][currentInsuranceOwner];
-            uint256 insuranceCost = getInsuranceCost(securedAsset, insurancePrime, insuranceDetails.quantity);
+            uint256 insuranceCost = getTotalInsuranceCostInTokenTransferDecimals(securedAsset, insurancePrime, insuranceDetails.quantity);
 
             uint256 amountToTransfer;
             if (isInsuracePaid) amountToTransfer = insuranceDetails.securedAmount - insuranceCost;
@@ -147,11 +151,27 @@ contract Vault is
         );
     }
 
-    function getInsuranceCost(address securedAsset, uint256 insurancePrime, uint256 quantity) internal view returns (uint256 insuranceCost) {
-        uint256 rwaValue = ITokenRWA(securedAsset).unitValue();
-        uint256 rwaDecimals = ITokenRWA(securedAsset).decimals();
-        uint256 insuranceValue = rwaValue * insurancePrime / 10 ** rwaDecimals;
-        insuranceCost = quantity * insuranceValue / 10 ** rwaDecimals;
+    function getTotalInsuranceCostInTokenTransferDecimals(
+        address securedAsset,
+        uint256 insurancePrime,
+        uint256 quantityToUnit
+    ) internal view returns (uint256 insuranceTotalCost) {
+        uint8 paymentTokenDecimals = ITokenRWA(securedAsset).getPaymentTokenDecimals();
+        uint256 rwaUnitValue = ITokenRWA(securedAsset).getRwaUnitValueInTokenTransferDecimals();
+        uint8 rwaDecimals = ITokenRWA(securedAsset).decimals();
+
+        // Convert rwaUnitValue to 18 decimals
+        uint8 diffDecimals = rwaDecimals - paymentTokenDecimals;
+        uint256 rwaUnitValueIn18Decimals = rwaUnitValue * 10**diffDecimals;
+
+        // Calculate the insurance unit value
+        uint256 insuranceUnitValue = (rwaUnitValueIn18Decimals * insurancePrime) / 10**rwaDecimals;
+
+        // Convert the result back to 6 decimals if needed
+        uint256 insuranceUnitValueIn6Decimals = insuranceUnitValue / 10**diffDecimals;
+
+        // Total cost
+        insuranceTotalCost = quantityToUnit * insuranceUnitValueIn6Decimals;
     }
 
     function withdraw() external onlyOwner {

@@ -349,7 +349,7 @@ describe("TokenInsurance", function () {
       await tx_hireInsurance.wait();
 
       const expectedTotalValue = await tokenInsuranceContract.getRwaTotalValueInTokenTransferDecimals(QUANTITY);
-      const expectedInsuranceTotalCost = await tokenInsuranceContract.getUserPaymentAmountInTokenTransferDecimals(QUANTITY);
+      const expectedInsuranceTotalCost = await tokenInsuranceContract.getTotalInsuranceCostInTokenTransferDecimals(QUANTITY);
       const expectedPaymentValue = BigNumber(expectedTotalValue).minus(expectedInsuranceTotalCost);
 
       await expect(tokenInsuranceContract.payInsuranceClients())
