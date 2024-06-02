@@ -12,8 +12,6 @@ import "./interfaces/ITokenRWA.sol";
 import "./BlockshieldMessageSender.sol";
 import "./BlockshieldMessageReceiver.sol";
 
-import "hardhat/console.sol";
-
 contract Vault is
     // AccessControl,
     Ownable,
@@ -134,14 +132,9 @@ contract Vault is
                 insurancePrime,
                 insuranceDetails.quantity
             );
-            console.log("insuranceTotalCost", insuranceTotalCost);
-
-            console.log("insuranceDetails.securedAmount", insuranceDetails.securedAmount);
-            console.log("insuranceDetails.quantity", insuranceDetails.quantity);
             uint256 amountToTransfer;
             if (isInsuracePaid) amountToTransfer = insuranceDetails.securedAmount - insuranceTotalCost;
             else {
-                console.log("ITokenRWA(securedAsset_).calculateRWAValuePlusYieldInTokenTransferDecimals()", ITokenRWA(securedAsset_).calculateRWAValuePlusYieldInTokenTransferDecimals());
                 amountToTransfer = (
                     insuranceDetails.quantity * ITokenRWA(securedAsset_).calculateRWAValuePlusYieldInTokenTransferDecimals()
                 ) - insuranceTotalCost;
