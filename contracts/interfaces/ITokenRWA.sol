@@ -8,6 +8,6 @@ interface ITokenRWA {
     function dueDate() external view returns (uint256);
     function getRwaUnitValueInTokenTransferDecimals() external view returns (uint256);
     function getPaymentTokenDecimals() external view returns (uint8 unitValue);
-    function calculateRWAValuePlusYield() external view returns (uint256);
+    function calculateRWAValuePlusYieldInTokenTransferDecimals() external view returns (uint256);
     function allowSpendTokens(address spender, uint256 value) external;
 }

@@ -12,6 +12,8 @@ import "./interfaces/ITokenRWA.sol";
 import "./BlockshieldMessageSender.sol";
 import "./BlockshieldMessageReceiver.sol";
 
+import "hardhat/console.sol";
+
 contract Vault is
     // AccessControl,
     Ownable,
@@ -70,8 +72,8 @@ contract Vault is
         address securedAsset_,
         address insuranceAddress_,
         address insuranceClient_,
-        uint256 quantity_,
-        uint256 securedAmount_
+        uint256 quantity_, // 1
+        uint256 securedAmount_  // 1000000 => 1 USDC
     ) external {
         // CHECK
         require(securedAsset_ != address(0), "securedAsset_ cannot be zero address");
@@ -109,11 +111,11 @@ contract Vault is
     }
 
     function payInsurance(address securedAsset, uint256 insurancePrime) internal {
-        payUser(securedAsset, false, insurancePrime);
+        payUser(securedAsset, true, insurancePrime);
     }
 
     function payRWAWithYield(address securedAsset, uint256 insurancePrime) internal {
-        payUser(securedAsset, true, insurancePrime);
+        payUser(securedAsset, false, insurancePrime);
     }
 
     function payUser(address securedAsset_, bool isInsuracePaid, uint256 insurancePrime) internal {
@@ -127,16 +129,43 @@ contract Vault is
             address currentInsuranceOwner = insuranceOwners[i];
 
             InsuranceDetails memory insuranceDetails = hiredInsurances[insuranceAddress_][currentInsuranceOwner];
-            uint256 insuranceCost = getTotalInsuranceCostInTokenTransferDecimals(securedAsset_, insurancePrime, insuranceDetails.quantity);
+            uint256 insuranceTotalCost = getTotalInsuranceCostInTokenTransferDecimals(
+                securedAsset_,
+                insurancePrime,
+                insuranceDetails.quantity
+            );
+            console.log("insuranceTotalCost", insuranceTotalCost);
 
+            console.log("insuranceDetails.securedAmount", insuranceDetails.securedAmount);
+            console.log("insuranceDetails.quantity", insuranceDetails.quantity);
             uint256 amountToTransfer;
-            if (isInsuracePaid) amountToTransfer = insuranceDetails.securedAmount - insuranceCost;
-            else amountToTransfer = (insuranceDetails.quantity * ITokenRWA(securedAsset_).calculateRWAValuePlusYield()) - insuranceCost;
+            if (isInsuracePaid) amountToTransfer = insuranceDetails.securedAmount - insuranceTotalCost;
+            else {
+                console.log("ITokenRWA(securedAsset_).calculateRWAValuePlusYieldInTokenTransferDecimals()", ITokenRWA(securedAsset_).calculateRWAValuePlusYieldInTokenTransferDecimals());
+                amountToTransfer = (
+                    insuranceDetails.quantity * ITokenRWA(securedAsset_).calculateRWAValuePlusYieldInTokenTransferDecimals()
+                ) - insuranceTotalCost;
+            } 
 
             totalAmount += amountToTransfer;
 
-            if (isInsuracePaid) emit InsurancePaid(securedAsset_, currentInsuranceOwner, insuranceDetails.quantity, insuranceDetails.securedAmount, insuranceCost);
-            else emit RWAYieldPaid(securedAsset_, currentInsuranceOwner, insuranceDetails.quantity, insuranceDetails.securedAmount, insuranceCost);
+            if (isInsuracePaid) {
+                emit InsurancePaid(
+                    securedAsset_,
+                    currentInsuranceOwner,
+                    insuranceDetails.quantity,
+                    insuranceDetails.securedAmount,
+                    insuranceTotalCost
+                );
+            } else {
+                emit RWAYieldPaid(
+                    securedAsset_,
+                    currentInsuranceOwner,
+                    insuranceDetails.quantity,
+                    insuranceDetails.securedAmount,
+                    insuranceTotalCost
+                );
+            }
         }
 
         if (insuranceOwners.length > 0) {
