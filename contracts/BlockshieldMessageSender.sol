@@ -24,6 +24,8 @@ abstract contract BlockshieldMessageSender {
     error NotEnoughBalance(uint256 currentBalance, uint256 calculatedFees);
     /// @dev Revert if address parameter is zero
     error ZeroAddress();
+    /// @dev Revert if token balance is zero
+    error NothingToWithdraw();
 
     /// @dev Events to emit onchain
     event MessageSent(
@@ -56,16 +58,19 @@ abstract contract BlockshieldMessageSender {
     /// @param _data The encodedWithSignature method and their parameters
     function sendMethodCallWithUSDC(
         address _destinationReceiverAddress, 
-        uint256 _amount, 
+        uint256 _amount,
         bytes memory _data
     ) internal virtual returns (bytes32) {
         if (_destinationReceiverAddress == address(0)) revert ZeroAddress();
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
-        Client.EVMTokenAmount memory tokenAmount = Client.EVMTokenAmount({
-            token: transferTokenAddress,
-            amount: _amount
-        });
-        tokenAmounts[0] = tokenAmount;
+
+        if (_amount > 0) {
+            Client.EVMTokenAmount memory tokenAmount = Client.EVMTokenAmount({
+                token: transferTokenAddress,
+                amount: _amount
+            });
+            tokenAmounts[0] = tokenAmount;
+        }
 
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(_destinationReceiverAddress),
@@ -123,4 +128,10 @@ abstract contract BlockshieldMessageSender {
     }
 
     function approve(address _transferTokenAddress, address _router, uint256 _amount) internal virtual;
+
+    /// @notice Allows the owner of the contract to withdraw all tokens of a specific ERC20 token.
+    /// @dev This function reverts with a 'NothingToWithdraw' error if there are no tokens to withdraw.
+    /// @param _beneficiary The address to which the tokens will be sent.
+    /// @param _token The contract address of the ERC20 token to be withdrawn.
+    function withdrawToken(address _beneficiary,address _token) public virtual;
 }

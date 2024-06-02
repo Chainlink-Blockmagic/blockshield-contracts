@@ -179,4 +179,15 @@ contract Vault is
     function approve(address _transferTokenAddress, address _router, uint256 _amount) internal override {
         IERC20(_transferTokenAddress).approve(address(_router), _amount);
     }
+
+    function withdrawToken(address _beneficiary,address _token) public override
+    {
+        // Retrieve the balance of this contract
+        uint256 amount = IERC20(_token).balanceOf(address(this));
+
+        // Revert if there is nothing to withdraw
+        if (amount == 0) revert NothingToWithdraw();
+
+        IERC20(_token).safeTransfer(_beneficiary, amount);
+    }
 }
