@@ -126,12 +126,13 @@ describe("TokenRWA", function () {
       it("Should set unit value correctly", async function () {
         const { tokenRWAContractAddress } = await loadFixture(deployProtocol);
         const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
-        const tokenRWAUnitValue = await tokenRWAContract.getRwaUnitValue();
+        const tokenRWAUnitValue = await tokenRWAContract.getRwaUnitValueInTokenTransferDecimals();
         const totalSupply = await tokenRWAContract.totalSupply();
         const tokenRWATotalValue = await tokenRWAContract.totalValue();
         const decimals = await tokenRWAContract.getPaymentTokenDecimals();
         const expectedUnitValue = BigNumber(tokenRWATotalValue).multipliedBy(BigNumber(10).pow(decimals)).div(totalSupply);
         expect(tokenRWAUnitValue).to.equal(expectedUnitValue);
+        expect(tokenRWAUnitValue).to.equal(parseUnits("100", 6));
       });
       it("Should set due date correctly", async function () {
         const { tokenRWAContractAddress } = await loadFixture(deployProtocol);
@@ -164,7 +165,7 @@ describe("TokenRWA", function () {
         const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
   
         const tokenRWAYield = await tokenRWAContract.yield();
-        const tokenRWAUnitValue = await tokenRWAContract.getRwaUnitValue();
+        const tokenRWAUnitValue = await tokenRWAContract.getRwaUnitValueInTokenTransferDecimals();
         const decimals = await tokenRWAContract.getPaymentTokenDecimals();
 
         const yieldAmount = await tokenRWAContract.calculateRWAValuePlusYield();

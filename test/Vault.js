@@ -1,6 +1,7 @@
 const { loadFixture } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
+const { default: BigNumber } = require("bignumber.js");
 const { expect } = require("chai");
-const { parseEther, parseUnits, ZeroAddress } = require("ethers");
+const { parseEther, parseUnits, ZeroAddress, solidityPackedKeccak256 } = require("ethers");
 
 const contracts = {
   MOCK_VAULT: "MockVault",
@@ -155,8 +156,8 @@ describe("Vault", function () {
     });
   });
 
-  describe.only("\n Handle RWA Payment", function () {
-    it("Should handle payment correctly", async () => {
+  describe("\n Handle RWA Payment", function () {
+    it("Should emit InsuranceWithoutClients when => nobody bought an insurance for specific RWA", async () => {
       const { vaultContractAddress, tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
 
       // Grant TokenRWA Admin access to Vault
@@ -169,6 +170,125 @@ describe("Vault", function () {
       await expect(vaultContract.handleRWAPayment(LIQUIDATION_RESPONSE, tokenRWAContractAddress, parseEther("0.05")))
       .to.emit(vaultContract, "InsuranceWithoutClients")
       .withArgs(tokenRWAContractAddress);
+    });
+    it("Should emit InsurancePaid event when => exists clients with insurance bougth AND Rwa WAS NOT liquidated", async () => {
+      const { vaultContractAddress, tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
+
+      // Grant TokenRWA Admin access to Vault
+      const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
+      await tokenRWAContract.grantAdminRole(vaultContractAddress);
+      
+      const vaultContract = await ethers.getContractAt(contracts.MOCK_VAULT, vaultContractAddress);
+
+      // Add hire record
+      const QUANTITY = 100;
+      const TOTAL_SECURED_AMOUNT =  parseUnits("10000", 6)// USDC
+      await vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address, QUANTITY, TOTAL_SECURED_AMOUNT);
+
+      const LIQUIDATION_RESPONSE = false;
+      const INSURANCE_COST = parseUnits("5", 6);
+      const TOTAL_INSURANCE_COST = BigNumber(INSURANCE_COST).multipliedBy(QUANTITY);
+      await expect(vaultContract.handleRWAPayment(LIQUIDATION_RESPONSE, tokenRWAContractAddress, parseEther("0.05")))
+      .to.emit(vaultContract, "InsurancePaid")
+      .withArgs(
+        tokenRWAContractAddress,
+        protocolAdmin.address,
+        QUANTITY,
+        TOTAL_SECURED_AMOUNT,
+        TOTAL_INSURANCE_COST,
+      );
+    });
+    it("Should emit InsurancePaid event when => exists clients with insurance bougth AND Rwa WAS NOT liquidated", async () => {
+      const { vaultContractAddress, tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
+
+      // Grant TokenRWA Admin access to Vault
+      const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
+      await tokenRWAContract.grantAdminRole(vaultContractAddress);
+      
+      const vaultContract = await ethers.getContractAt(contracts.MOCK_VAULT, vaultContractAddress);
+
+      // Add hire record
+      const QUANTITY = 100;
+      const TOTAL_SECURED_AMOUNT =  parseUnits("10000", 6)// USDC
+      await vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address, QUANTITY, TOTAL_SECURED_AMOUNT);
+
+      const LIQUIDATION_RESPONSE = false;
+      const INSURANCE_COST = parseUnits("5", 6);
+      const TOTAL_INSURANCE_COST = BigNumber(INSURANCE_COST).multipliedBy(QUANTITY);
+
+      const TOTAL_AMOUNT = BigNumber(TOTAL_SECURED_AMOUNT).minus(TOTAL_INSURANCE_COST);
+
+      await expect(vaultContract.handleRWAPayment(LIQUIDATION_RESPONSE, tokenRWAContractAddress, parseEther("0.05")))
+      .to.emit(vaultContract, "InsuranceTotalPayment")
+      .withArgs(
+        solidityPackedKeccak256([], []),
+        tokenRWAContractAddress,
+        tokenInsuranceContractAddress,
+        TOTAL_AMOUNT,
+      );
+    });
+    it("Should emit RWAYieldPaid event when => exists clients with insurance bougth AND Rwa WAS liquidated", async () => {
+      const { vaultContractAddress, tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
+
+      // Grant TokenRWA Admin access to Vault
+      const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
+      await tokenRWAContract.grantAdminRole(vaultContractAddress);
+      
+      const vaultContract = await ethers.getContractAt(contracts.MOCK_VAULT, vaultContractAddress);
+
+      // Add hire record
+      const QUANTITY = 100;
+      const TOTAL_SECURED_AMOUNT =  parseUnits("10000", 6)// USDC
+      await vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address, QUANTITY, TOTAL_SECURED_AMOUNT);
+
+      const LIQUIDATION_RESPONSE = true;
+      const INSURANCE_COST = parseUnits("5", 6);
+      const TOTAL_INSURANCE_COST = BigNumber(INSURANCE_COST).multipliedBy(QUANTITY);
+
+      // const TOTAL_AMOUNT = BigNumber(TOTAL_SECURED_AMOUNT).minus(TOTAL_INSURANCE_COST);
+      await expect(vaultContract.handleRWAPayment(LIQUIDATION_RESPONSE, tokenRWAContractAddress, parseEther("0.05")))
+      .to.emit(vaultContract, "RWAYieldPaid")
+      .withArgs(
+        tokenRWAContractAddress,
+        protocolAdmin.address,
+        QUANTITY,
+        TOTAL_SECURED_AMOUNT,
+        TOTAL_INSURANCE_COST
+      );
+    });
+    it("Should emit InsuranceTotalPayment event when => exists clients with insurance bougth AND Rwa WAS liquidated", async () => {
+      const { vaultContractAddress, tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin } = await loadFixture(deployProtocol);
+
+      // Grant TokenRWA Admin access to Vault
+      const tokenRWAContract = await ethers.getContractAt(contracts.TOKEN_RWA, tokenRWAContractAddress);
+      await tokenRWAContract.grantAdminRole(vaultContractAddress);
+      
+      const vaultContract = await ethers.getContractAt(contracts.MOCK_VAULT, vaultContractAddress);
+
+      // Add hire record
+      const QUANTITY = 100;
+      const TOTAL_SECURED_AMOUNT =  parseUnits("10000", 6)// USDC
+      await vaultContract.addHiredInsurance(tokenRWAContractAddress, tokenInsuranceContractAddress, protocolAdmin.address, QUANTITY, TOTAL_SECURED_AMOUNT);
+
+      const LIQUIDATION_RESPONSE = true;
+      const INSURANCE_COST = parseUnits("5", 6);
+      const TOTAL_INSURANCE_COST = BigNumber(INSURANCE_COST).multipliedBy(QUANTITY);
+
+      const YIELD = parseUnits("0.15", 6);
+      const TOTAL_AMOUNT_WITH_YIELD = BigNumber(TOTAL_SECURED_AMOUNT)
+        .multipliedBy(YIELD)
+        .div(BigNumber(10).pow(6))
+        .plus(TOTAL_SECURED_AMOUNT)
+        .minus(TOTAL_INSURANCE_COST)
+        ;
+      await expect(vaultContract.handleRWAPayment(LIQUIDATION_RESPONSE, tokenRWAContractAddress, parseEther("0.05")))
+      .to.emit(vaultContract, "InsuranceTotalPayment")
+      .withArgs(
+        solidityPackedKeccak256([], []),
+        tokenRWAContractAddress,
+        tokenInsuranceContractAddress,
+        TOTAL_AMOUNT_WITH_YIELD,
+      );
     });
   });
   const deployTokenRWA = async ({ mockUSDCContractAddress }) => {
