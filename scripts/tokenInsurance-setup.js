@@ -99,8 +99,8 @@ const sendLinkToTokenInsurance = async ({ signer, addressToFund, linkAddress }) 
   const LINK_ADDRESS = linkAddress;
   const linkContract = new ethers.Contract(LINK_ADDRESS, linkAbi, signer);
   // Send LINK tokens to TokenInsurance 
-  console.log(" --- Sending 0.1 LINK to TokenInsurance --- ");
-  const tx = await linkContract.transfer(addressToFund, parseEther("0.1"));
+  console.log(" --- Sending 2 LINK to TokenInsurance --- ");
+  const tx = await linkContract.transfer(addressToFund, parseEther("2"));
   await tx.wait();
 
   const tokenInsuranceBalance = await linkContract.balanceOf(addressToFund);
