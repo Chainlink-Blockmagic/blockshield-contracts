@@ -20,8 +20,6 @@ import "./FunctionWithUpdateRequest.sol";
 import "./BlockshieldMessageSender.sol";
 import "./BlockshieldMessageReceiver.sol";
 
-import "hardhat/console.sol";
-
 contract TokenInsurance is
     ERC20,
     ERC20Burnable,
