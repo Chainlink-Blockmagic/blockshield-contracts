@@ -35,10 +35,12 @@ So check [Automations - Supported networks](https://docs.chain.link/chainlink-au
 
 # Deploy steps
 1. Deploy Vault in Ethereum Sepolia
-  - Send 5 LINK tokens to Vault
+  - Ethereum Sepolia: 
+    - routerCCIP: `0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59`
+  - Send 2 LINK tokens to Vault for CCIP usage
 2. Deploy TokenRWA in Ethereum Sepolia
   - Set USDC Ethereum Sepolia address: `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238`
-
+  - Grant Admin Role to Vault address
 3. Create a one Function Subscription in Chainlink [here](https://functions.chain.link/) and use same network used to deploy **TokenInsurance** contract
   - Create the subscription (copy subscription ID)
   - Add LINK funds in the correspondant network
@@ -46,13 +48,15 @@ So check [Automations - Supported networks](https://docs.chain.link/chainlink-au
 
 4. Deploy TokenInsurance in Polygon Amoy
   - To use the `AggregatorV3Interface` to retrieve the last price for `USDC/USD` on *Polygon Amoy*, the address is: `0x1b8739bB4CdF0089d07097A9Ae5Bd274b29C6F16`
-  - Send 5 LINK tokens to TokenInsurance
+  - Send 2 LINK tokens to TokenInsurance for CCIP usage
 
 Interact with TokenInsurance
 5. Execute following methods:
   - updateSenderCrossChainProperties() to provide CCIP needed attributes 
     ```bash
-    { _destinationChainSelector: 16015286601757825753, _linkAddress: 0x0Fd9e8d3aF1aaee056EB9e802c3A762a667b1904, _transferTokenAddress (USDC): 0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582 }
+    { 
+      _destinationChainSelector: 16015286601757825753, 
+      _linkAddress: 0x0Fd9e8d3aF1aaee056EB9e802c3A762a667b1904, _transferTokenAddress (USDC): 0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582 }
     ```
   - setVault() with vault contract address
   - setToken() with tokenRWA contract address
@@ -66,11 +70,15 @@ Interact with TokenInsurance
         bool isSet;
     }
     ```
-    - tuple: ```["0x967B332Dc38F9b40136F715Ca162f945A6fA7eCE",1000000000000000000000000,1000000000000000000000000,1717194614,"PRECATORIO105",true]```
+    - tuple:
+    ```
+    ["0x2500F2661384fb2CcD236cD432FBFA02f71a3062", 10000000000000000000000, 100000000000000000000,1717194614,"FIT08", true]
+    ```
 6. Update Function request by script runing the following script
 ```bash
 yarn update-request:amoy <SUBSCRIPTION_ID> <CONSUMER_ADDRESS (TokenInsurance address)> <TOKEN_RWA_SYMBOL>
 ```
+7. Set up Automation upkeep
 
 ### Links
 1. https://faucet.circle.com
